@@ -28,4 +28,3 @@ export interface AgricultureDeviceSensorAlertResult {
 export type AgricultureDeviceSensorAlertListPageResult = BasePageResult<AgricultureDeviceSensorAlertResult>
 export type AgricultureDeviceSensorAlertListResult = BaseArrayResult<AgricultureDeviceSensorAlertResult>
 export type AgricultureDeviceSensorAlertInfoResult = BaseObjectResult<AgricultureDeviceSensorAlertResult>
-

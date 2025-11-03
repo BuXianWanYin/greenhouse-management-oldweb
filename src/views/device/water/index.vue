@@ -451,7 +451,7 @@ import { useMqttStore } from '@/store/modules/mqttStore' // MQTT 状态管理
 import { storeToRefs } from 'pinia' // Pinia store 工具
 import { AgricultureThresholdConfigService } from '@/api/device/thresholdConfig' // 阈值配置 API
 import { ParamTypeDictService } from '@/api/device/typedictApi' // 参数字典 API
-import { AgricultureDeviceSensorAlertService } from '@/api/device/alertApi'// 报警信息API
+import { AgricultureDeviceSensorAlertService } from '@/api/sensor/alertApi'// 报警信息API
 import { useUserStore } from '@/store/modules/user'//获取用户API
 
 

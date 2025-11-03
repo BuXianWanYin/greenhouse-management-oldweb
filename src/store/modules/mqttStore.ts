@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getMqttClient } from '@/api/device/mqttClient'
+import { getMqttClient } from '@/api/mqtt/mqttClient'
 import { AgricultureDeviceMqttConfigService } from '@/api/device/deviceConfigApi'
 
 export const useMqttStore = defineStore('mqtt', () => {

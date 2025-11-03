@@ -1,4 +1,4 @@
-// src/api/device/mqttClient.ts
+// src/api/mqtt/mqttClient.ts
 import mqtt, { MqttClient } from 'mqtt';
 
 const options = {

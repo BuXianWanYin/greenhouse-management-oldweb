@@ -1,5 +1,5 @@
 import request from '@/utils/http'
-import { AgricultureDeviceSensorAlertInfoResult,AgricultureDeviceSensorAlertListPageResult } from '@/types/device/alert'
+import { AgricultureDeviceSensorAlertInfoResult,AgricultureDeviceSensorAlertListPageResult } from '@/types/sensor/alert'
 import { CodeMsgResult } from '@/types/axios'
 
 // 传感器预警信息
