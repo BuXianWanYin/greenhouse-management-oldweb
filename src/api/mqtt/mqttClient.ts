@@ -1,22 +1,21 @@
-// src/api/mqtt/mqttClient.ts
 import mqtt, { MqttClient } from 'mqtt';
+import config from '@/config';
 
-const options = {
-  username: 'guest',
-  password: 'guest',
-  clientId: 'fish-dish-web-' + Math.random().toString(16).substr(2, 8),
-  clean: true,
-  reconnectPeriod: 1000,
-  connectTimeout: 30 * 1000,
-};
-//rabbitmq_web_mqtt 监听 15675 端口（WebSocket 协议）
-const brokerUrl = 'ws://192.168.31.168:15675/ws';
 //单例
 let mqttClient: MqttClient | null = null;
 
 export function getMqttClient(): MqttClient {
   if (!mqttClient) {
-    mqttClient = mqtt.connect(brokerUrl, options);
+    const mqttConfig = config.mqtt;
+    const options = {
+      username: mqttConfig.username,
+      password: mqttConfig.password,
+      clientId: mqttConfig.clientIdPrefix + Math.random().toString(16).slice(2, 10),
+      clean: mqttConfig.clean,
+      reconnectPeriod: mqttConfig.reconnectPeriod,
+      connectTimeout: mqttConfig.connectTimeout,
+    };
+    mqttClient = mqtt.connect(mqttConfig.brokerUrl, options);
   }
   return mqttClient;
 }

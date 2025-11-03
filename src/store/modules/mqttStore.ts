@@ -23,10 +23,7 @@ export const useMqttStore = defineStore('mqtt', () => {
     WEATHER: 'fish-dish/trends/weather'
   }
 
-  // 预警主题常量  全栈
-  // const ALERT_TOPICS = {
-  //   ALERTS: '/fish-dish/alerts'
-  // }
+
   const ALERT_TOPICS = {
     ALERTS: 'fish-dish/alerts'
   }
@@ -42,14 +39,14 @@ export const useMqttStore = defineStore('mqtt', () => {
           // 处理水质趋势数据
           if (topic === TREND_TOPICS.WATER_QUALITY) {
             waterQualityTrendData.value = data
-              // console.log('收到水质趋势分析数据:', data)
+               console.log('收到水质趋势分析数据:', data)
             return
           }
           
           // 处理气象趋势数据
           if (topic === TREND_TOPICS.WEATHER) {
             weatherTrendData.value = data
-              // console.log('收到气象趋势分析数据:', data)
+               console.log('收到气象趋势分析数据:', data)
             return
           }
           if(topic === ALERT_TOPICS.ALERTS){
@@ -57,18 +54,12 @@ export const useMqttStore = defineStore('mqtt', () => {
             console.log("收到预警信息：",data)
             return
           }
-          
-          // 处理预警数据  全栈
-          // if (topic === ALERT_TOPICS.ALERTS) {
-          //   alertData.value = data
-          //   console.log('收到预警信息:', data)
-          //   return
-          // }
+        
           
           // 处理设备数据
           if (data.deviceId) {
             deviceDataMap.value[String(data.deviceId)] = data
-            //  console.log('全局收到MQTT消息:', { topic, data })
+              console.log('全局收到MQTT消息:', { topic, data })
           }
         } catch (e) {
           console.error('解析MQTT消息失败', e)
@@ -205,7 +196,7 @@ export const useMqttStore = defineStore('mqtt', () => {
     initMqttClient,
     subscribeAllDeviceTopics,
     subscribeTrendTopics,
-    subscribeAlertTopics, // 全栈
+    subscribeAlertTopics, 
     unsubscribeTrendTopics,
     unsubscribeAlertTopics,
     subscribeWaterQualityTrend,

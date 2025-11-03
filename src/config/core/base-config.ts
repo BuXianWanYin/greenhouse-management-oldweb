@@ -133,5 +133,15 @@ export const createBaseConfig = (): SystemConfig => ({
     defaultMenuWidth: 252, // 菜单宽度
     defaultCustomRadius: '0.75', // 自定义圆角
     defaultTabStyle: 'tab-default' // 标签样式
+  },
+  // MQTT 配置
+  mqtt: {
+    brokerUrl: import.meta.env.VITE_MQTT_BROKER_URL,
+    username: import.meta.env.VITE_MQTT_USERNAME,
+    password: import.meta.env.VITE_MQTT_PASSWORD,
+    clientIdPrefix: import.meta.env.VITE_MQTT_CLIENT_ID_PREFIX,
+    clean: import.meta.env.VITE_MQTT_CLEAN === 'true' || true,
+    reconnectPeriod: parseInt(import.meta.env.VITE_MQTT_RECONNECT_PERIOD || '1000', 10),
+    connectTimeout: parseInt(import.meta.env.VITE_MQTT_CONNECT_TIMEOUT || '30000', 10)
   }
 })

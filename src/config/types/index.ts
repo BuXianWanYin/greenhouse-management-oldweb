@@ -18,6 +18,17 @@ export interface MenuLayout {
   img: string
 }
 
+// MQTT 配置
+export interface MqttConfig {
+  brokerUrl: string
+  username: string
+  password: string
+  clientIdPrefix: string
+  clean: boolean
+  reconnectPeriod: number
+  connectTimeout: number
+}
+
 // 系统配置
 export interface SystemConfig {
   elementPlusTheme: { primary: string }
@@ -36,4 +47,5 @@ export interface SystemConfig {
     defaultCustomRadius: string
     defaultTabStyle: string
   }
+  mqtt: MqttConfig
 }
