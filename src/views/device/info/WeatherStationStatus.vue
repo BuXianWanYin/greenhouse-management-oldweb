@@ -1,6 +1,5 @@
 <template>
-  <el-dialog :title="device.deviceName" v-model="dialogVisible" :width="dialogWidth" append-to-body @open="onDialogOpen"
-    @close="onDialogClose">
+  <el-dialog :title="device.deviceName" v-model="dialogVisible" width="750px" append-to-body>
     <template #title>
       {{ device.deviceName }}
       <el-tag :type="currentStatus === 'online' ? 'success' : currentStatus === 'fault' ? 'danger' : 'info'"
@@ -15,61 +14,7 @@
         <el-switch v-else v-model="deviceOn" @change="handleSwitchChange" />
       </span>
     </template>
-    <div v-if="String(device.deviceTypeId) === CAMERA_TYPE_ID"
-      style="width:100%;text-align:center;min-height:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
-      <!-- 设备关闭时显示提示 -->
-      <div v-if="!deviceOn" class="video-placeholder">
-        <div class="placeholder-content">
-          <div class="placeholder-icon">
-            <el-icon size="48" color="#909399">
-              <VideoCamera />
-            </el-icon>
-          </div>
-          <div class="loading-text">设备已关闭，请开启设备后查看监控画面</div>
-        </div>
-      </div>
-      <!-- 设备开启时的视频内容 -->
-      <div v-else>
-        <!-- 视频占位符和加载提示 -->
-        <div v-if="cameraLoading" class="video-placeholder">
-          <div class="placeholder-content">
-            <div class="placeholder-icon">
-              <el-icon size="48" color="#909399">
-                <VideoCamera />
-              </el-icon>
-            </div>
-            <div class="loading-text">监控画面加载中...</div>
-            <div class="loading-spinner">
-              <el-icon class="is-loading" size="24" color="#409EFF">
-                <Loading />
-              </el-icon>
-            </div>
-          </div>
-        </div>
-        <div v-else-if="cameraError || videoError" style="color:red;">{{ cameraError || videoError }}</div>
-
-        <!-- Canvas 元素始终存在，通过 CSS 控制显示 -->
-        <div class="video-container" :class="{ 'video-hidden': cameraLoading || cameraError || videoError }">
-          <canvas ref="videoCanvas" id="video-canvas" width="1920" height="1080"
-            style="border-radius: 10px; display:block; margin:0 auto; max-width:100%; height:auto;" />
-        </div>
-        
-        <!-- 连接状态信息
-        <div v-if="isConnected && !cameraLoading && !cameraError && !videoError" class="video-info">
-          <div class="info-item">
-            <span class="info-label">连接状态:</span>
-            <span class="info-value">{{ connectionInfo }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">帧率:</span>
-            <span class="info-value">{{ fps.toFixed(1) }} FPS</span>
-          </div>
-        </div> -->
-
-
-      </div>
-    </div>
-    <div v-else class="weather-status-content">
+    <div class="weather-status-content">
       <!-- 左侧数据 -->
       <div class="weather-data">
         <div class="data-list">
@@ -106,16 +51,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, inject, onMounted, nextTick } from 'vue'
-import { ElIcon } from 'element-plus'
+import { ref, computed, watch, inject, type Ref } from 'vue'
 import { AgricultureDeviceService } from '@/api/device/deviceApi'
 import { ElMessage } from 'element-plus'
 import {
-  Sunny, ColdDrink, IceDrink, Compass, Odometer, DataAnalysis,
-  Coin, Watermelon, Sugar, Flag, Star, VideoCamera, Loading
+  Sunny, ColdDrink, IceDrink,
+  DataAnalysis, Odometer, Connection, Sugar, Coin, Watermelon
 } from '@element-plus/icons-vue'
-import { useBase64VideoPlayer } from '@/composables/useBase64VideoPlayer'
-import { getStreamWsUrl } from '@/api/device/cameraStreamApi'
 
 type DeviceStatus = 'online' | 'offline' | 'fault'
 
@@ -125,7 +67,6 @@ const props = defineProps<{
   status: DeviceStatus
 }>()
 const emit = defineEmits(['update:modelValue', 'save', 'refresh'])
-const player = ref<any>(null);
 const dialogVisible = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
@@ -143,19 +84,21 @@ const currentStatus = computed<DeviceStatus>(() => {
   return 'offline'
 })
 
-const weatherDataList = [
+const airDataList = [
   { label: '空气温度', key: 'temperature', unit: '℃', icon: ColdDrink, colorClass: 'data-color-orange', bgClass: 'data-bg-orange', borderClass: 'data-border-orange' },
   { label: '空气湿度', key: 'humidity', unit: '%', icon: IceDrink, colorClass: 'data-color-yellow', bgClass: 'data-bg-yellow', borderClass: 'data-border-yellow' },
-  { label: '风向', key: 'windDirection', unit: '', icon: Compass, colorClass: 'data-color-green', bgClass: 'data-bg-green', borderClass: 'data-border-green' },
-  { label: '风速', key: 'windSpeed', unit: 'm/s', icon: Flag, colorClass: 'data-color-orange', bgClass: 'data-bg-orange', borderClass: 'data-border-orange' },
   { label: '光照强度', key: 'lightIntensity', unit: 'Lux', icon: Sunny, colorClass: 'data-color-purple', bgClass: 'data-bg-purple', borderClass: 'data-border-purple' }
 ]
 
-const waterQualityList = [
-  { label: 'PH值', key: 'phValue', unit: '', icon: DataAnalysis, colorClass: 'data-color-blue', bgClass: 'data-bg-blue', borderClass: 'data-border-blue' },
-  { label: '溶解氧', key: 'dissolvedOxygen', unit: 'mg/L', icon: Odometer, colorClass: 'data-color-green', bgClass: 'data-bg-green', borderClass: 'data-border-green' },
-  { label: '氨氮', key: 'ammoniaNitrogen', unit: 'mg/L', icon: Coin, colorClass: 'data-color-yellow', bgClass: 'data-bg-yellow', borderClass: 'data-border-yellow' },
-  { label: '水温', key: 'waterTemperature', unit: '℃', icon: ColdDrink, colorClass: 'data-color-orange', bgClass: 'data-bg-orange', borderClass: 'data-border-orange' }
+const soilDataList = [
+  { label: '土壤温度', key: 'soil_temperature', unit: '℃', icon: ColdDrink, colorClass: 'data-color-orange', bgClass: 'data-bg-orange', borderClass: 'data-border-orange' },
+  { label: '土壤湿度', key: 'soil_humidity', unit: 'm³/m³', icon: IceDrink, colorClass: 'data-color-yellow', bgClass: 'data-bg-yellow', borderClass: 'data-border-yellow' },
+  { label: '土壤电导率', key: 'soil_conductivity', unit: 'µS/cm', icon: Connection, colorClass: 'data-color-blue', bgClass: 'data-bg-blue', borderClass: 'data-border-blue' },
+  { label: '土壤盐分', key: 'soil_salinity', unit: 'mg/L', icon: Sugar, colorClass: 'data-color-yellow', bgClass: 'data-bg-yellow', borderClass: 'data-border-yellow' },
+  { label: '土壤氮含量', key: 'soil_nitrogen', unit: 'mg/kg', icon: DataAnalysis, colorClass: 'data-color-green', bgClass: 'data-bg-green', borderClass: 'data-border-green' },
+  { label: '土壤磷含量', key: 'soil_phosphorus', unit: 'mg/kg', icon: Odometer, colorClass: 'data-color-orange', bgClass: 'data-bg-orange', borderClass: 'data-border-orange' },
+  { label: '土壤钾含量', key: 'soil_potassium', unit: 'mg/kg', icon: Coin, colorClass: 'data-color-purple', bgClass: 'data-bg-purple', borderClass: 'data-border-purple' },
+  { label: '土壤pH值', key: 'soil_ph', unit: '', icon: Watermelon, colorClass: 'data-color-blue', bgClass: 'data-bg-blue', borderClass: 'data-border-blue' }
 ]
 
 // 1. inject 全局 deviceDataMap
@@ -171,71 +114,6 @@ const deviceData = computed(() => {
   return deviceDataMap?.value?.[id] || {}
 })
 
-const CAMERA_TYPE_ID = '5'
-const videoCanvas = ref<HTMLCanvasElement | null>(null)
-const cameraLoading = ref(false)
-const cameraError = ref('')
-
-const { 
-  connectStream, 
-  disconnectStream, 
-  isConnected, 
-  error: videoError, 
-  frameCount, 
-  fps, 
-  connectionInfo,
-  startPingInterval,
-  stopPingInterval
-} = useBase64VideoPlayer()
-
-const onDialogOpen = async () => {
-  if (String(props.device.deviceTypeId) === CAMERA_TYPE_ID) {
-    // 如果设备关闭，不加载视频流
-    if (!deviceOn.value) {
-      cameraLoading.value = false;
-      cameraError.value = '';
-      return;
-    }
-
-    cameraLoading.value = true;
-    cameraError.value = '';
-
-    setTimeout(async () => {
-      try {
-        // 获取canvas元素
-        const canvas = videoCanvas.value;
-        if (!canvas) {
-          cameraError.value = '视频画布初始化失败';
-          cameraLoading.value = false;
-          return;
-        }
-        
-        // 断开现有连接
-        disconnectStream();
-        
-        // 连接Base64视频流
-        connectStream(props.device.id, canvas, getStreamWsUrl);
-        startPingInterval();
-        
-        console.log('Base64 video player connected');
-        cameraLoading.value = false;
-      } catch (error) {
-        console.error('视频加载失败:', error);
-        cameraError.value = '视频流加载失败，请检查网络连接';
-        cameraLoading.value = false;
-      }
-    }, 800);
-  }
-};
-
-const onDialogClose = () => {
-  disconnectStream();
-  stopPingInterval();
-  cameraLoading.value = false;
-  cameraError.value = '';
-};
-
-defineExpose({ onDialogOpen, onDialogClose });
 
 // 监听设备数据变化，更新开关状态
 watch(() => props.device, (newDevice) => {
@@ -257,46 +135,6 @@ watch(deviceOn, async (newValue, oldValue) => {
       if (res.code === 200) {
         ElMessage.success(newValue ? '设备已开启' : '设备已关闭')
         emit('refresh')
-
-        // 如果是摄像头设备，根据开关状态处理视频流
-        if (String(props.device.deviceTypeId) === CAMERA_TYPE_ID) {
-          if (newValue) {
-            // 设备开启，加载视频流
-            cameraLoading.value = true;
-            cameraError.value = '';
-
-            setTimeout(async () => {
-              try {
-                const canvas = videoCanvas.value;
-                if (!canvas) {
-                  cameraError.value = '视频画布初始化失败';
-                  cameraLoading.value = false;
-                  return;
-                }
-                
-                // 断开现有连接
-                disconnectStream();
-                
-                // 连接Base64视频流
-                connectStream(props.device.id, canvas, getStreamWsUrl);
-                startPingInterval();
-                
-                console.log('Base64 video player connected');
-                cameraLoading.value = false;
-              } catch (error) {
-                console.error('视频加载失败:', error);
-                cameraError.value = '视频流加载失败，请检查网络连接';
-                cameraLoading.value = false;
-              }
-            }, 800);
-          } else {
-            // 设备关闭，断开连接
-            disconnectStream();
-            stopPingInterval();
-            cameraLoading.value = false;
-            cameraError.value = '';
-          }
-        }
       } else {
         // 如果更新失败，恢复开关状态
         deviceOn.value = oldValue
@@ -324,12 +162,13 @@ function save() {
 }
 
 const dataList = computed(() => {
-  const name = props.device?.deviceName || ''
-  if (name.includes('风速')) return weatherDataList.filter(item => item.key === 'windSpeed')
-  if (name.includes('风向')) return weatherDataList.filter(item => item.key === 'windDirection')
-  if (name.includes('百叶箱')) return weatherDataList.filter(item => ['temperature', 'humidity', 'lightIntensity'].includes(item.key))
-  if (name.includes('水质')) return waterQualityList
-  return []
+  // 根据设备名称判断显示哪个数据列表
+  const deviceName = props.device?.deviceName || ''
+  // 如果设备名称包含"土壤"，显示土壤数据，否则显示气象数据
+  if (deviceName.includes('土壤')) {
+    return soilDataList
+  }
+  return airDataList
 })
 
 // 格式化日期时间为 年-月-日 时:分:秒
@@ -340,10 +179,6 @@ function formatDateTime(val: string | undefined): string {
   // 若为 '2025-06-25 19:06:56' 直接返回，若为 '2025-06-25 19:06:56.2778517' 去掉小数
   return d;
 }
-//计算宽度
-const dialogWidth = computed(() => {
-  return String(props.device?.deviceTypeId) === CAMERA_TYPE_ID ? '1000px' : '750px';
-});
 </script>
 
 <style scoped>
@@ -703,87 +538,5 @@ const dialogWidth = computed(() => {
 
 .data-date-placeholder {
   color: #ccc;
-}
-
-.video-placeholder {
-  width: 948px;
-  height: 520px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f7fa;
-  border-radius: 10px;
-  position: relative;
-}
-
-.placeholder-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.placeholder-icon {
-  background-color: #e0e0e0;
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-}
-
-.loading-text {
-  font-size: 18px;
-  color: #909399;
-  font-weight: 500;
-}
-
-.loading-spinner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.video-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.video-hidden {
-  display: none;
-}
-
-.video-info {
-  margin-top: 16px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.info-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #333;
-  font-weight: 600;
 }
 </style>
