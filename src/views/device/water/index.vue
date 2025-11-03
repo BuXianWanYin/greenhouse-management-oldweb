@@ -450,9 +450,7 @@ import { ElMessage, ElMessageBox } from 'element-plus' // Element Plus 消息弹
 import { useMqttStore } from '@/store/modules/mqttStore' // MQTT 状态管理
 import { storeToRefs } from 'pinia' // Pinia store 工具
 import { AgricultureThresholdConfigService } from '@/api/device/thresholdConfig' // 阈值配置 API
-import { AgricultureWaterQualityDataService } from '@/api/device/waterQualityDataApi' // 水质数据 API
 import { ParamTypeDictService } from '@/api/device/typedictApi' // 参数字典 API
-import { AgricultureAutoControlStrategyService } from '@/api/device/strategyApi' // 自动控制策略 API
 import { AgricultureDeviceSensorAlertService } from '@/api/device/alertApi'// 报警信息API
 import { useUserStore } from '@/store/modules/user'//获取用户API
 
@@ -858,12 +856,14 @@ onBeforeUnmount(() => {
     if (strategyForm.value.deviceId) {
       params.deviceId = strategyForm.value.deviceId
     }
-    const res = await AgricultureAutoControlStrategyService.listStrategy(params)
-    if (res && Array.isArray(res.rows)) {
-      strategies.value = res.rows;
-    } else {
-      strategies.value = [];
-    }
+    // 策略API已删除
+    // const res = await AgricultureAutoControlStrategyService.listStrategy(params)
+    // if (res && Array.isArray(res.rows)) {
+    //   strategies.value = res.rows;
+    // } else {
+    //   strategies.value = [];
+    // }
+    strategies.value = [];
   } finally {
     strategyLoading.value = false
   }
@@ -912,14 +912,15 @@ const onEditStrategy = (row) => {
     return
   }
   try {
-    if (editingStrategy.value) {
-      await AgricultureAutoControlStrategyService.updateStrategy(strategyForm.value)
-      ElMessage.success('策略修改成功')
-    } else {
-      await AgricultureAutoControlStrategyService.addStrategy(strategyForm.value)
-      ElMessage.success('策略添加成功')
-    }
-    // 重置 deviceId，避免下次查列表带上
+    // 策略API已删除
+    // if (editingStrategy.value) {
+    //   await AgricultureAutoControlStrategyService.updateStrategy(strategyForm.value)
+    //   ElMessage.success('策略修改成功')
+    // } else {
+    //   await AgricultureAutoControlStrategyService.addStrategy(strategyForm.value)
+    //   ElMessage.success('策略添加成功')
+    // }
+    ElMessage.warning('策略功能已移除')
     strategyForm.value.deviceId = ''
     strategyDialog.value = false
     loadStrategies()
@@ -935,8 +936,9 @@ const onEditStrategy = (row) => {
 const onDeleteStrategy = async (row) => {
   try {
     await ElMessageBox.confirm('确定要删除该策略吗？', '提示', { type: 'warning' })
-    await AgricultureAutoControlStrategyService.deleteStrategy(row.id)
-    ElMessage.success('删除成功')
+    // 策略API已删除
+    // await AgricultureAutoControlStrategyService.deleteStrategy(row.id)
+    ElMessage.warning('策略功能已移除')
     loadStrategies()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
@@ -949,11 +951,14 @@ const onDeleteStrategy = async (row) => {
  */
 const onStrategyStatusChange = async (row) => {
   try {
-    await AgricultureAutoControlStrategyService.updateStrategy({
-      ...row,
-      status: row.status ? 1 : 0 // 1 或 0
-    });
-    ElMessage.success('状态更新成功');
+    // 策略API已删除
+    // await AgricultureAutoControlStrategyService.updateStrategy({
+    //   ...row,
+    //   status: row.status ? 1 : 0 // 1 或 0
+    // });
+    ElMessage.warning('策略功能已移除')
+    // 恢复原状态
+    row.status = !row.status
   } catch (e) {
     ElMessage.error('状态更新失败');
     // 恢复原状态
@@ -1224,14 +1229,15 @@ const fetchWeatherTrendData = async () => {
   trendChartLoading.value = true
   try {
     if (props.pastureId && props.batchId) {
-      const res = await AgricultureWaterQualityDataService.getTrendData({
-        pastureId: props.pastureId,
-        batchId: props.batchId,
-        range: chartTimeRange.value
-      })
-      if (res && res.code === 200 && res.data) {
-        updateTrendChart(res.data)
-      }
+      // 水质数据API已删除
+      // const res = await AgricultureWaterQualityDataService.getTrendData({
+      //   pastureId: props.pastureId,
+      //   batchId: props.batchId,
+      //   range: chartTimeRange.value
+      // })
+      // if (res && res.code === 200 && res.data) {
+      //   updateTrendChart(res.data)
+      // }
     }
   } catch (error) {
     console.error('请求气象趋势数据失败:', error)
