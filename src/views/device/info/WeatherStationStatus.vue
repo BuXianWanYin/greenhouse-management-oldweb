@@ -88,7 +88,7 @@ const currentStatus = computed<DeviceStatus>(() => {
 const airDataList = [
   { label: '空气温度', key: 'temperature', unit: '℃', icon: ColdDrink, colorClass: 'data-color-orange', bgClass: 'data-bg-orange', borderClass: 'data-border-orange' },
   { label: '空气湿度', key: 'humidity', unit: '%', icon: IceDrink, colorClass: 'data-color-yellow', bgClass: 'data-bg-yellow', borderClass: 'data-border-yellow' },
-  { label: '光照强度', key: 'lightIntensity', unit: 'Lux', icon: Sunny, colorClass: 'data-color-purple', bgClass: 'data-bg-purple', borderClass: 'data-border-purple' }
+  { label: '光照强度', key: 'illuminance', unit: 'Lux', icon: Sunny, colorClass: 'data-color-purple', bgClass: 'data-bg-purple', borderClass: 'data-border-purple' }
 ]
 
 const soilDataList = [

@@ -663,16 +663,16 @@ const strategyForm = ref({
     {
       name: 'lightIntensity',
       label: '光照强度',
-      value: weatherData?.lightIntensity ?? '--',
+      value: weatherData?.illuminance ?? '--',
       unit: 'Lux',
       range: getThresholdRange(weatherId, 'light_intensity'),
       percentage: (() => {
-        const v = Number(weatherData?.lightIntensity)
+        const v = Number(weatherData?.illuminance)
         const config = getThresholdConfig(weatherId, 'light_intensity')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
-        const v = Number(weatherData?.lightIntensity)
+        const v = Number(weatherData?.illuminance)
         const config = getThresholdConfig(weatherId, 'light_intensity')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
