@@ -216,32 +216,39 @@
               <el-form-item label="备注" prop="remark">
                 <el-input v-model="mqttForm.remark" type="textarea" />
               </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click.prevent="onSaveMqtt">保存</el-button>
-                <el-button @click.prevent="onResetMqtt">重置</el-button>
-              </el-form-item>
             </el-form>
           </div>
         </el-tab-pane>
         <!-- 传感器指令配置 -->
         <el-tab-pane label="指令配置" name="sensor">
-          <el-form label-width="120px" style="max-width: 500px;">
-            <el-form-item label="传感器指令">
-              <el-input v-model="sensorCommand" placeholder="请输入指令" />
-            </el-form-item>
-          </el-form>
+          <div class="tab-content-center">
+            <el-form :model="heartbeatForm" :rules="heartbeatRules" ref="heartbeatFormRef" label-width="220px" style="width: 800px;">
+              <el-form-item label="传感器指令(Modbus-RTU)">
+                <el-input v-model="sensorCommand" placeholder="请输入指令" />
+              </el-form-item>
+              <el-divider>心跳指令配置</el-divider>
+              <el-form-item label="心跳指令(Modbus-RTU)" prop="heartbeatCmdHex">
+                <el-input v-model="heartbeatForm.heartbeatCmdHex" placeholder="请输入心跳指令" />
+              </el-form-item>
+              <el-form-item label="发送间隔(毫秒)" prop="sendInterval">
+                <el-input-number v-model="heartbeatForm.sendInterval" :min="1" :max="999999" placeholder="请输入发送间隔" style="width: 100%" />
+              </el-form-item>
+            </el-form>
+          </div>
         </el-tab-pane>
       </template>
     </el-tabs>
     
     <!-- 底部按钮区域 -->
-    <div class="dialog-footer" style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px;">
+    <div class="dialog-footer" style="display:flex;justify-content:center;gap:12px;margin-top:24px;flex-wrap:wrap;">
       <el-button v-if="activeTab === 'camera'" type="primary" @click="saveCameraParams">保存</el-button>
-      <el-button v-if="activeTab === 'sensor'" type="primary" @click="onSaveSensorCommand">保存</el-button>
+      <el-button v-if="activeTab === 'mqtt'" type="primary" @click="onSaveMqtt">保存</el-button>
+      <el-button v-if="activeTab === 'mqtt'" @click="onResetMqtt">重置</el-button>
+      <el-button v-if="activeTab === 'sensor'" type="primary" @click="onSaveSensorCommand">保存传感器指令</el-button>
+      <el-button v-if="activeTab === 'sensor'" type="primary" @click="onSaveHeartbeat">保存心跳指令</el-button>
       <el-button v-if="activeTab === 'threshold' && changedRowsCount > 0" type="primary"
         @click="changedRowsCount === 1 ? saveSelected() : saveAll()">{{ changedRowsCount === 1 ? '保存' : '全部保存'
         }}</el-button>
-      <el-button @click="visible = false">关闭</el-button>
     </div>
     
     <!-- 新增参数类型对话框 -->
@@ -274,6 +281,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { AgricultureThresholdConfigService } from '@/api/device/thresholdConfig'
 import { AgricultureDeviceMqttConfigService } from '@/api/device/deviceConfigApi'
 import { AgricultureDeviceService } from '@/api/device/deviceApi'
+import { AgricultureDeviceHeartbeatService } from '@/api/device/deviceheartbeatApi'
 import { ElMessage } from 'element-plus'
 import { cloneDeep, isEqual } from 'lodash-es'
 import { Plus, Delete } from '@element-plus/icons-vue'
@@ -336,6 +344,8 @@ watch(() => props.modelValue, v => visible.value = v)
 watch(visible, v => {
   emit('update:modelValue', v)
   if (v) {
+    // 弹窗打开时先清空表单，再获取数据
+    Object.assign(heartbeatForm.value, { ...heartbeatFormInitial })
     // 弹窗打开时自动选中第一个tab
     if (props.device?.deviceTypeId === CAMERA_TYPE_ID) {
       activeTab.value = 'camera'
@@ -344,6 +354,7 @@ watch(visible, v => {
     }
     fetchMqttConfig()
     fetchSensorCommand()
+    fetchHeartbeatConfig()
   }
 })
 
@@ -670,11 +681,16 @@ async function fetchThresholds() {
 
 watch(
   () => props.device?.id,
-  (id) => {
+  (id, oldId) => {
+    // 设备ID变化时，先清空心跳表单，再获取新数据
+    if (id && id !== oldId) {
+      Object.assign(heartbeatForm.value, { ...heartbeatFormInitial })
+    }
     if (id) {
       fetchThresholds()
       fetchMqttConfig()
       fetchSensorCommand()
+      fetchHeartbeatConfig()
     }
   },
   { immediate: true }
@@ -791,6 +807,92 @@ async function onSaveSensorCommand() {
   } catch (e) {
     ElMessage.error('保存失败')
   }
+}
+
+// 心跳指令配置相关
+const heartbeatFormInitial = {
+  id: undefined,
+  heartbeatCmdHex: '',
+  sendInterval: undefined as number | undefined
+}
+const heartbeatForm = ref({ ...heartbeatFormInitial })
+const heartbeatFormRef = ref<FormInstance>()
+const heartbeatRules = {
+  heartbeatCmdHex: [{ required: false, message: '请输入心跳指令', trigger: 'blur' }],
+  sendInterval: [{ required: false, message: '请输入发送间隔', trigger: 'blur' }]
+} as FormRules
+
+async function fetchHeartbeatConfig() {
+  if (!props.device?.id) return
+  try {
+    // 通过列表查询，根据deviceId筛选
+    const res: any = await AgricultureDeviceHeartbeatService.listHeartbeat({
+      deviceId: props.device.id,
+      pageNum: 1,
+      pageSize: 1
+    })
+    if (res && res.code === 200 && res.rows && res.rows.length > 0) {
+      const heartbeatData = res.rows[0]
+      // 验证返回的数据的deviceId是否匹配当前设备
+      if (heartbeatData.deviceId === props.device.id || String(heartbeatData.deviceId) === String(props.device.id)) {
+        Object.assign(heartbeatForm.value, {
+          id: heartbeatData.id,
+          heartbeatCmdHex: heartbeatData.heartbeatCmdHex || '',
+          sendInterval: heartbeatData.sendInterval ? Number(heartbeatData.sendInterval) : undefined
+        })
+      } else {
+        // 如果deviceId不匹配，清空表单
+        Object.assign(heartbeatForm.value, { ...heartbeatFormInitial })
+      }
+    } else {
+      Object.assign(heartbeatForm.value, { ...heartbeatFormInitial })
+    }
+  } catch (e) {
+    Object.assign(heartbeatForm.value, { ...heartbeatFormInitial })
+  }
+}
+
+async function onSaveHeartbeat() {
+  if (!heartbeatFormRef.value) {
+    ElMessage.warning('表单未初始化')
+    return
+  }
+  heartbeatFormRef.value.validate(async (valid) => {
+    if (!valid) {
+      ElMessage.warning('请检查表单填写是否正确')
+      return
+    }
+    try {
+      const data = {
+        deviceId: props.device.id,
+        heartbeatCmdHex: heartbeatForm.value.heartbeatCmdHex,
+        sendInterval: heartbeatForm.value.sendInterval
+      }
+      let res: any
+      if (heartbeatForm.value.id) {
+        res = await AgricultureDeviceHeartbeatService.updateHeartbeat({
+          ...data,
+          id: heartbeatForm.value.id
+        })
+      } else {
+        res = await AgricultureDeviceHeartbeatService.addHeartbeat(data)
+        // 新增成功后，保存返回的id
+        if (res && res.code === 200 && res.data) {
+          heartbeatForm.value.id = res.data.id || res.data
+        }
+      }
+      if (res && res.code === 200) {
+        ElMessage.success('保存成功')
+        // 延迟一下再刷新，确保数据已保存到数据库
+        await new Promise(resolve => setTimeout(resolve, 100))
+        await fetchHeartbeatConfig()
+      } else {
+        ElMessage.error(res?.msg || '保存失败')
+      }
+    } catch (e) {
+      ElMessage.error('保存失败：' + ((e as Error).message || '未知错误'))
+    }
+  })
 }
 
 const dialogWidth = computed(() => {
@@ -993,5 +1095,10 @@ watch(
 
 .alarm-select :deep(.el-select__caret.is-reverse) {
   transform: rotateZ(180deg);
+}
+
+/* 防止指令配置标签换行 */
+:deep(.el-form-item__label) {
+  white-space: nowrap;
 }
 </style>

@@ -3,7 +3,7 @@
     <table-bar :showTop="false" @search="handleQuery" @reset="resetForm(queryRef)" @changeColumn="changeColumn"
       :columns="columns">
       <template #top>
-        <el-form :model="queryParams" ref="queryRef" label-width="82px">
+        <el-form :model="queryParams" ref="queryRef" label-width="90px">
           <el-row :gutter="20">
             <form-input label="设备名称" prop="deviceName" v-model="queryParams.deviceName" @keyup.enter="handleQuery" />
             <el-form-item label="最后在线时间" prop="lastOnlineTime">
@@ -109,7 +109,7 @@
 
     <!-- 添加或修改设备信息对话框 -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
-      <el-form v-if="step === 1" ref="deviceRef" :model="form" :rules="rules" label-width="80px">
+      <el-form v-if="step === 1" ref="deviceRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="温室" prop="pastureId">
           <el-select v-model="form.pastureId" placeholder="请选择温室" clearable
             style="width: 100%" :loading="cascaderLoading">
@@ -1532,5 +1532,10 @@ const fetchPastureOptions = async () => {
     display: flex;
     height: unset;
   }
+}
+
+/* 防止设备信息对话框标签换行 */
+:deep(.el-dialog .el-form-item__label) {
+  white-space: nowrap;
 }
 </style>

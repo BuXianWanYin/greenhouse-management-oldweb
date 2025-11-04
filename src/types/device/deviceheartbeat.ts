@@ -9,12 +9,14 @@ export interface AgricultureDeviceHeartbeatResult {
                 cmdRegLength: string,
                 crc16Low: string,
                 crc16High: string,
+                sendInterval: string,
                 lastSendTime: string,
                 lastRecvTime: string,
                 onlineStatus: string,
                 offlineCount: string,
                 createTime: string,
-                updateTime: string
+                updateTime: string,
+                lastOnlineTime: string
 }
 
 export type AgricultureDeviceHeartbeatListPageResult = BasePageResult<AgricultureDeviceHeartbeatResult>
