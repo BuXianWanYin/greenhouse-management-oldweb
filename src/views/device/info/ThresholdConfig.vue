@@ -74,16 +74,10 @@
                 </template>
               </el-table-column>
               <el-table-column prop="unit" label="单位" width="80">
-                <template #default="{ row, $index }">
-                  <template v-if="editingUnitIndex === $index">
-                    <el-input v-model="row.unit" size="small" @blur="stopEditUnit"
-                      @keydown="(e) => handleUnitKeydown(e as KeyboardEvent)" autofocus />
-                  </template>
-                  <template v-else>
-                    <span class="unit-text" @click="startEditUnit($index)" style="cursor:pointer;color:#999;">
-                      {{ row.unit || '—' }}
-                    </span>
-                  </template>
+                <template #default="{ row }">
+                  <span style="color:#999;">
+                    {{ row.unit || '—' }}
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column prop="notifyType" label="通知方式" width="140">
@@ -183,9 +177,9 @@
               </el-form-item>
               <el-form-item label="QOS等级" prop="mqttQos">
                 <el-select v-model="mqttForm.mqttQos" placeholder="请选择QOS">
-                  <el-option :label="'QoS 0（最多一次）- 不保证送达，性能最高，可能丢失消息'" :value="0" />
-                  <el-option :label="'QoS 1（至少一次）- 保证送达，可能重复消息，适合一般业务'" :value="1" />
-                  <el-option :label="'QoS 2（只有一次）- 保证送达且不重复，可靠性最高，开销较大'" :value="2" />
+                  <el-option :label="'QoS 0 -不保证送达，性能最高，可能丢失消息'" :value="0" />
+                  <el-option :label="'QoS 1 -保证送达，可能重复消息'" :value="1" />
+                  <el-option :label="'QoS 2 -保证送达且不重复，可靠性最高，开销较大'" :value="2" />
                 </el-select>
               </el-form-item>
               <el-form-item label="MQTT用户名" prop="mqttUsername">
@@ -201,18 +195,21 @@
             </el-form>
           </div>
         </el-tab-pane>
-        <!-- 传感器指令配置 -->
-        <el-tab-pane label="指令配置" name="sensor">
+        <!-- 数据采集配置 -->
+        <el-tab-pane label="数据采集配置" name="sensor">
           <div class="tab-content-center">
             <el-form :model="heartbeatForm" :rules="heartbeatRules" ref="heartbeatFormRef" label-width="220px" style="width: 800px;">
               <el-form-item label="传感器指令(Modbus-RTU)">
                 <el-input v-model="sensorCommand" placeholder="请输入指令" />
               </el-form-item>
+              <el-form-item label="采集间隔(秒)">
+                <el-input-number v-model="collectInterval" :min="1" :max="999999" placeholder="请输入采集间隔" style="width: 100%" />
+              </el-form-item>
               <el-divider>心跳指令配置</el-divider>
               <el-form-item label="心跳指令(Modbus-RTU)" prop="heartbeatCmdHex">
                 <el-input v-model="heartbeatForm.heartbeatCmdHex" placeholder="请输入心跳指令" />
               </el-form-item>
-              <el-form-item label="发送间隔(毫秒)" prop="sendInterval">
+              <el-form-item label="发送间隔(秒)" prop="sendInterval">
                 <el-input-number v-model="heartbeatForm.sendInterval" :min="1" :max="999999" placeholder="请输入发送间隔" style="width: 100%" />
               </el-form-item>
             </el-form>
@@ -226,8 +223,7 @@
       <el-button v-if="activeTab === 'camera'" type="primary" @click="saveCameraParams">保存</el-button>
       <el-button v-if="activeTab === 'mqtt'" type="primary" @click="onSaveMqtt">保存</el-button>
       <el-button v-if="activeTab === 'mqtt'" @click="onResetMqtt">重置</el-button>
-      <el-button v-if="activeTab === 'sensor'" type="primary" @click="onSaveSensorCommand">保存传感器指令</el-button>
-      <el-button v-if="activeTab === 'sensor'" type="primary" @click="onSaveHeartbeat">保存心跳指令</el-button>
+      <el-button v-if="activeTab === 'sensor'" type="primary" @click="onSaveSensorConfig">保存</el-button>
       <el-button v-if="activeTab === 'threshold' && changedRowsCount > 0" type="primary"
         @click="changedRowsCount === 1 ? saveSelected() : saveAll()">{{ changedRowsCount === 1 ? '保存' : '全部保存'
         }}</el-button>
@@ -317,7 +313,6 @@ async function saveCameraParams() {
     }
   })
 }
-const editingUnitIndex = ref<number | null>(null) //单位
 const emit = defineEmits(['update:modelValue'])
 
 const visible = ref(props.modelValue)
@@ -700,12 +695,14 @@ async function fetchThresholds() {
     const res = await AgricultureThresholdConfigService.listByDeviceId(props.device.id)
     const list = res?.data || []
     // 获取参数类型映射表（英文->中文）
+    // 使用完整的paramTypeDictData，而不是过滤后的paramTypeOptions，确保所有参数都能找到中文名
     let paramTypeMap: Record<string, string> = {}
-    if (paramTypeOptions.value.length === 0) {
+    if (paramTypeDictData.value.length === 0) {
       await fetchParamTypeOptions()
     }
-    paramTypeOptions.value.forEach(item => {
-      paramTypeMap[item.value] = item.label
+    // 使用完整的参数类型字典数据构建映射表
+    paramTypeDictData.value.forEach((item: any) => {
+      paramTypeMap[item.paramTypeEn] = item.paramTypeCn
     })
     thresholds.value = list.map((t: any) => ({
       ...t,
@@ -855,26 +852,82 @@ watch(() => props.sensorCommand, (val) => {
   sensorCommand.value = val || ''
 })
 
+// 采集间隔配置相关
+const collectInterval = ref<number | undefined>(undefined)
+watch(() => props.device?.collectInterval, (val) => {
+  collectInterval.value = val ? Number(val) : undefined
+})
+
 // 获取设备指令
 async function fetchSensorCommand() {
   if (!props.device?.id) return
   try {
     const res = await AgricultureDeviceService.getDevice(props.device.id)
     sensorCommand.value = res.data?.sensorCommand || ''
+    collectInterval.value = res.data?.collectInterval ? Number(res.data.collectInterval) : undefined
   } catch (e) {
     sensorCommand.value = ''
+    collectInterval.value = undefined
   }
 }
 
-async function onSaveSensorCommand() {
+// 统一保存数据采集配置（传感器指令、采集间隔、心跳指令）
+async function onSaveSensorConfig() {
+  if (!heartbeatFormRef.value) {
+    ElMessage.warning('表单未初始化')
+    return
+  }
+  
+  // 验证心跳指令表单
+  const valid = await new Promise<boolean>((resolve) => {
+    heartbeatFormRef.value?.validate((isValid: boolean) => {
+      resolve(isValid)
+    })
+  })
+  
+  if (!valid) {
+    ElMessage.warning('请检查表单填写是否正确')
+    return
+  }
+  
   try {
+    // 1. 保存设备配置（传感器指令和采集间隔）
     await AgricultureDeviceService.updateDevice({
       id: props.device.id,
-      sensorCommand: sensorCommand.value
+      sensorCommand: sensorCommand.value,
+      collectInterval: collectInterval.value
     })
-    ElMessage.success('保存成功')
+    
+    // 2. 保存心跳指令配置
+    const data = {
+      deviceId: props.device.id,
+      heartbeatCmdHex: heartbeatForm.value.heartbeatCmdHex,
+      sendInterval: heartbeatForm.value.sendInterval
+    }
+    let res: any
+    if (heartbeatForm.value.id) {
+      res = await AgricultureDeviceHeartbeatService.updateHeartbeat({
+        ...data,
+        id: heartbeatForm.value.id
+      })
+    } else {
+      res = await AgricultureDeviceHeartbeatService.addHeartbeat(data)
+      // 新增成功后，保存返回的id
+      if (res && res.code === 200 && res.data) {
+        heartbeatForm.value.id = res.data.id || res.data
+      }
+    }
+    
+    if (res && res.code === 200) {
+      ElMessage.success('保存成功')
+      // 延迟一下再刷新，确保数据已保存到数据库
+      await new Promise(resolve => setTimeout(resolve, 100))
+      await fetchHeartbeatConfig()
+    } else {
+      ElMessage.error(res?.msg || '保存失败')
+    }
   } catch (e) {
-    ElMessage.error('保存失败')
+    ElMessage.error('保存失败：' + ((e as Error).message || '未知错误'))
   }
 }
 
@@ -921,48 +974,6 @@ async function fetchHeartbeatConfig() {
   }
 }
 
-async function onSaveHeartbeat() {
-  if (!heartbeatFormRef.value) {
-    ElMessage.warning('表单未初始化')
-    return
-  }
-  heartbeatFormRef.value.validate(async (valid) => {
-    if (!valid) {
-      ElMessage.warning('请检查表单填写是否正确')
-      return
-    }
-    try {
-      const data = {
-        deviceId: props.device.id,
-        heartbeatCmdHex: heartbeatForm.value.heartbeatCmdHex,
-        sendInterval: heartbeatForm.value.sendInterval
-      }
-      let res: any
-      if (heartbeatForm.value.id) {
-        res = await AgricultureDeviceHeartbeatService.updateHeartbeat({
-          ...data,
-          id: heartbeatForm.value.id
-        })
-      } else {
-        res = await AgricultureDeviceHeartbeatService.addHeartbeat(data)
-        // 新增成功后，保存返回的id
-        if (res && res.code === 200 && res.data) {
-          heartbeatForm.value.id = res.data.id || res.data
-        }
-      }
-      if (res && res.code === 200) {
-        ElMessage.success('保存成功')
-        // 延迟一下再刷新，确保数据已保存到数据库
-        await new Promise(resolve => setTimeout(resolve, 100))
-        await fetchHeartbeatConfig()
-      } else {
-        ElMessage.error(res?.msg || '保存失败')
-      }
-    } catch (e) {
-      ElMessage.error('保存失败：' + ((e as Error).message || '未知错误'))
-    }
-  })
-}
 
 const dialogWidth = computed(() => {
   if (props.device?.deviceTypeId === '5') {
@@ -1034,17 +1045,6 @@ async function submitAddParamType() {
 function getParamTypeEnByName(name: string) {
   const found = paramTypeOptions.value.find(item => item.label === name)
   return found ? found.value : name // 如果找不到就返回原值
-}
-function startEditUnit(index: number) {
-  editingUnitIndex.value = index
-}
-function stopEditUnit() {
-  editingUnitIndex.value = null
-}
-function handleUnitKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    stopEditUnit()
-  }
 }
 
 watch(
@@ -1121,11 +1121,6 @@ watch(
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
-}
-
-.unit-text:hover {
-  color: #409EFF;
-  text-decoration: underline;
 }
 
 /* 修复通知方式下拉框的样式问题 */

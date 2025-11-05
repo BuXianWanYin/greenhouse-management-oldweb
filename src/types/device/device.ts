@@ -11,6 +11,7 @@ export interface AgricultureDeviceResult {
                 pastureId: string,
                 pastureName?: string,
                 sensorCommand: string,
+                collectInterval?: number | string,
                 userControlSwitch?: string,
                 onlineStatus?: number | string
 }

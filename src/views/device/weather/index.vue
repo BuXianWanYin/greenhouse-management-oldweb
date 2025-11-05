@@ -17,11 +17,6 @@
               </div>
               <div class="range">安全范围: {{ item.range }}</div>
               <el-progress :percentage="item.percentage" :color="item.status.color" />
-              <div class="trend">
-                <span>24h趋势:</span>
-                <el-tag v-if="item.trend" size="small" :type="item.trend.type">{{ item.trend.text }}</el-tag>
-                <span v-else>--</span>
-              </div>
             </div>
           </el-card>
         </el-col>
@@ -47,7 +42,6 @@
                 <el-radio-button :value="'day'">24小时</el-radio-button>
                 <el-radio-button :value="'week'">7天</el-radio-button>
                 <el-radio-button :value="'month'">30天</el-radio-button>
-                <el-radio-button :value="''">历史数据</el-radio-button>
               </el-radio-group>
             </div>
           </div>
@@ -70,13 +64,6 @@
               </template>
             </el-table-column>
             <el-table-column prop="threshold" label="阈值范围" width="400" />
-            <el-table-column prop="level" label="预警级别" width="200">
-              <template #default="scope">
-                <el-tag :type="scope.row.level === '严重' ? 'danger' : 'warning'">
-                  {{ scope.row.level }}
-                </el-tag>
-              </template>
-            </el-table-column>
             <el-table-column prop="notify" label="通知方式">
               <template #default="scope">
                 <el-tag
@@ -102,45 +89,6 @@
               </template>
             </el-table-column>
           </el-table>
-          <!-- <el-table :data="alarmRules" style="width: 100%">
-            <el-table-column prop="parameter" label="监测参数" width="120">
-              <template #default="scope">
-                {{ paramTypeDict[scope.row.parameter] || scope.row.parameter }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="threshold" label="阈值范围" width="200" />
-            <el-table-column prop="level" label="报警级别" width="100">
-              <template #default="scope">
-                <el-tag :type="scope.row.level === '严重' ? 'danger' : 'warning'">
-                  {{ scope.row.level }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="notify" label="通知方式">
-              <template #default="scope">
-                <el-tag
-                  :type="getNotifyTagType(scope.row.notify)"
-                  size="small"
-                >
-                  {{ scope.row.notify }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
-              <template #default="scope">
-                <el-switch
-                  v-model="scope.row.status"
-                  @change="onAlarmRuleStatusChange(scope.row)"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200">
-              <template #default="scope">
-                <el-button link size="small" @click="onEditAlarmRule(scope.row)">编辑</el-button>
-                <el-button link size="small" @click="onDeleteAlarmRule(scope.row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table> -->
         </el-card>
 
        <!-- 气象异常报警列表 -->
@@ -188,7 +136,6 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="blockAddress" label="合约地址" />
           <el-table-column prop="status" label="状态">
             <template #default="scope">
               <el-tag :type="scope.row.status === 0 ? 'danger' : 'success'" size="small">
@@ -201,15 +148,6 @@
               {{ scope.row.remark || '/' }}
             </template>
           </el-table-column>
-          <!-- <el-table-column prop="alertType" label="偏低/偏高">
-            <template #default="scope">
-              <el-tag :type="scope.row.alertType === 'LOW' ? 'info' : 'danger'">
-                {{ scope.row.alertType === 'LOW' ? '偏低' : '偏高' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="deviceName" label="设备" />
-          <el-table-column prop="alertMessage" label="说明" /> -->
           <el-table-column label="操作">
             <template #default="scope">
               <el-button link size="small" @click="onHandleWarning(scope.row)">处理</el-button>
@@ -234,12 +172,6 @@
         </el-form-item>
         <el-form-item label="阈值范围">
           <el-input v-model="editForm.threshold" disabled />
-        </el-form-item>
-        <el-form-item label="预警级别">
-          <el-select v-model="editForm.level" placeholder="请选择">
-            <el-option label="严重" value="严重" />
-            <el-option label="警告" value="警告" />
-          </el-select>
         </el-form-item>
         <el-form-item label="通知方式">
           <el-select v-model="editForm.notify" placeholder="请选择">
@@ -305,6 +237,7 @@ import { ParamTypeDictService } from '@/api/device/typedictApi' // 参数字典 
 import { AgricultureDeviceSensorAlertService } from '@/api/sensor/alertApi'// 报警信息API
 import { AgricultureDeviceMqttConfigService } from '@/api/device/deviceConfigApi' // 设备MQTT配置 API
 import { useUserStore } from '@/store/modules/user'//获取用户API
+import { AgricultureAirDataService } from '@/api/sensor/airdataApi' // 气象数据API
 
 // 2. 父组件传递的参数 props
 const props = defineProps({
@@ -316,12 +249,8 @@ const props = defineProps({
 // --- Pinia store 相关 ---
 const mqttStore = useMqttStore() // 获取 MQTT store 实例
 const { deviceDataMap } = storeToRefs(mqttStore) // 解构出设备数据映射
-// weatherTrendData 不存在于 mqttStore 中，创建本地 ref
-const weatherTrendData = ref(null) // 本地气象趋势数据
-
 // --- 阈值、字典、缓存相关 ---
 const thresholdMap = ref({}) // 各设备阈值配置映射
-const cachedTrendData = ref(null) // 气象趋势数据缓存
 const paramTypeDict = ref({}) // 参数类型中英文对照字典
 const paramUnitDict = ref({}) // 参数类型单位字典 { paramTypeEn: unit }
 const deviceTopicMap = ref({}) // 设备ID到MQTT topic的映射 { deviceId: topic }
@@ -479,8 +408,7 @@ const dateRange = ref([]) // 检测记录日期范围
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: ColdDrink,
-      description: '影响作物生长和蒸发量',
-      trend: getTrend('temperature')
+      description: '影响作物生长和蒸发量'
     },
     {
       name: 'humidity',
@@ -499,8 +427,7 @@ const dateRange = ref([]) // 检测记录日期范围
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: IceDrink,
-      description: '影响作物蒸腾和病害发生',
-      trend: getTrend('humidity')
+      description: '影响作物蒸腾和病害发生'
     },
     {
       name: 'lightIntensity',
@@ -519,8 +446,7 @@ const dateRange = ref([]) // 检测记录日期范围
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Sunny,
-      description: '影响光合作用',
-      trend: getTrend('lightIntensity')
+      description: '影响光合作用'
     },
   ]
 })
@@ -584,76 +510,11 @@ const currentPastureIdRef = computed(() => {
   }
 })
 
-// 监听 deviceDataMap 的变化，筛选出气象设备数据并更新 weatherTrendData
-watch(
-  deviceDataMap,
-  (newVal) => {
-    try {
-      const pastureId = currentPastureIdRef.value
-      if (!pastureId) {
-        return
-      }
-      
-      // 遍历 deviceDataMap，找到匹配的气象设备数据
-      if (!newVal || typeof newVal !== 'object') {
-        return
-      }
-      
-      // 查找气象设备数据（topic 包含 air-data）
-      for (const deviceId in newVal) {
-        try {
-          const deviceData = newVal[deviceId]
-          if (!deviceData || typeof deviceData !== 'object') {
-            continue
-          }
-          
-          // MQTT 数据格式：data 直接包含 pastureId，没有 deviceInfo 包装
-          // 检查是否是气象数据（通过 topic 判断）
-          const topic = deviceData.topic
-          if (!topic || typeof topic !== 'string') {
-            continue
-          }
-          
-          const isWeatherData = topic.includes('air-data') || topic.includes('weather')
-          
-          // 检查 pastureId 是否匹配（数据直接在 data 对象中）
-          const dataPastureId = deviceData.pastureId
-          if (dataPastureId == null) {
-            continue
-          }
-          
-          // 安全地转换为字符串进行比较
-          const dataPastureIdStr = String(dataPastureId)
-          
-          if (isWeatherData && dataPastureIdStr === pastureId) {
-            // 写入缓存
-            const cacheKey = `weatherTrendData_${pastureId}`
-            const cacheObj = {
-              data: deviceData,
-              ts: Date.now()
-            }
-            localStorage.setItem(cacheKey, JSON.stringify(cacheObj))
-            weatherTrendData.value = deviceData
-            cachedTrendData.value = deviceData
-            console.log(`[weatherTrendData] 已写入缓存:`, cacheKey, cacheObj)
-          }
-        } catch (e) {
-          console.error('处理设备数据错误:', e, deviceId)
-        }
-      }
-    } catch (e) {
-      console.error('watch deviceDataMap for weatherTrendData error:', e)
-    }
-  },
-  { immediate: false, deep: true }
-)
-
 /**
  * 侦听 pastureId、deviceList 的变化
  * 1. 设备列表变化时加载阈值和订阅
  * 2. id变化时刷新报警规则、读取缓存
- * 3. id变化时读取趋势缓存
- * 4. 每次变化都请求气象趋势数据
+ * 3. 每次变化都请求气象趋势数据
  */
 // 使用 computed 来安全地访问 props
 const propsWatchSource = computed(() => {
@@ -702,17 +563,13 @@ watch(
         loadAlarmRules(newPastureId) // 刷新报警规则
         fetchWarningList() // <<=== 加载气象异常预警数据
       }
-      // 3. id变化时读取趋势缓存
-      if (newPastureId) {
-        readTrendCache()
-      }
-      // 4. 每次变化都请求气象趋势数据
+      // 3. 每次变化都请求气象趋势数据
       fetchWeatherTrendData()
     } catch (e) {
       console.error('watch propsWatchSource error:', e)
     }
   },
-  { immediate: false, deep: true }
+  { immediate: true, deep: true }
 )
 
 //侦听自动处理时间
@@ -779,11 +636,12 @@ watch([warningLevel, warningStatus], () => {
  onMounted(async () => {
   // 先读取缓存，保证 deviceDataMap 有数据
   readDeviceDataMapCache()
-  // 加载设备MQTT topic配置
+  // 加载设备MQTT topic配置和阈值配置
   if (props.deviceList && props.deviceList.length > 0) {
     const weatherDevices = (props.deviceList || []).filter(d => d && d.deviceTypeId == 1)
     const deviceIds = weatherDevices.map(d => d && d.id).filter(id => id != null)
     if (deviceIds.length > 0) {
+      await loadThresholds(deviceIds) // 确保加载阈值配置
       await loadDeviceTopics(deviceIds)
     }
   }
@@ -863,7 +721,6 @@ const loadAlarmRules = async (pastureId) => {
           id: item.id,
           parameter: item.paramType,
           threshold,
-          level: item.alarmLevel === 'danger' ? '严重' : '警告',
           notify: notifyTypeMap[item.notifyType] || item.notifyType || '--',
           status: item.isEnabled === 1 || item.isEnabled === true || item.isEnabled === '1',
           description: item.remark || ''
@@ -891,12 +748,10 @@ const onEditAlarmRule = (row) => {
  */
 const onEditAlarmRuleSave = async () => {
   try {
-    const alarmLevelMap = { '严重': 'danger', '警告': 'warning' }
     const notifyTypeMapReverse = { '系统通知': 'system', '邮箱提醒': 'email', '短信': 'sms' }
     await AgricultureThresholdConfigService.updateConfig({
       id: editForm.value.id,
       paramType: editForm.value.parameter,
-      alarmLevel: alarmLevelMap[editForm.value.level] || 'warning',
       notifyType: notifyTypeMapReverse[editForm.value.notify] || 'system',
       isEnabled: editForm.value.status ? 1 : 0,
       remark: editForm.value.description,
@@ -1093,21 +948,43 @@ const fetchWeatherTrendData = async () => {
   try {
     const pastureId = currentPastureIdRef.value
     if (pastureId) {
-      // 气象数据API已删除
-      // const res = await AgricultureWeatherDataService.getTrendData({
-      //   pastureId: props.pastureId,
-      //   range: chartTimeRange.value
-      // })
-      // if (res && res.code === 200 && res.data) {
-      //   updateTrendChart(res.data)
-      // }
-      
-      // 临时使用假数据，等后端接口实现后删除
-      const mockData = generateMockWeatherData()
-      updateTrendChart(mockData)
+      const res = await AgricultureAirDataService.getTrendData(
+        pastureId,
+        chartTimeRange.value
+      )
+      if (res && res.code === 200 && res.data) {
+        // 处理API返回的数据格式，将xaxis转换为xAxis
+        const processedData = {
+          xAxis: res.data.xaxis || res.data.xAxis || [],
+          temperature: res.data.temperature || [],
+          humidity: res.data.humidity || [],
+          windSpeed: res.data.windSpeed || [],
+          lightIntensity: res.data.lightIntensity || []
+        }
+        updateTrendChart(processedData)
+      } else {
+        // 如果API返回失败或没有数据，使用空数据
+        const emptyData = {
+          xAxis: [],
+          temperature: [],
+          humidity: [],
+          windSpeed: [],
+          lightIntensity: []
+        }
+        updateTrendChart(emptyData)
+      }
     }
   } catch (error) {
     console.error('请求气象趋势数据失败:', error)
+    // 错误时使用空数据
+    const emptyData = {
+      xAxis: [],
+      temperature: [],
+      humidity: [],
+      windSpeed: [],
+      lightIntensity: []
+    }
+    updateTrendChart(emptyData)
   } finally {
     trendChartLoading.value = false
   }
@@ -1118,8 +995,9 @@ const fetchWeatherTrendData = async () => {
  * @param {Object} data 趋势数据
  */
 function updateTrendChart(data) {
-  const xAxisData = data.xAxis
-  const len = xAxisData.length
+  // 确保xAxis字段存在，兼容xaxis（小写）
+  const xAxisData = data.xAxis || data.xaxis || []
+  const len = xAxisData.length || 0
 
   function fixSeriesData(arr, len) {
     if (!arr) return Array(len).fill(0)
@@ -1138,9 +1016,10 @@ function updateTrendChart(data) {
     lightIntensity: { name: '光照强度', data: fixSeriesData(data.lightIntensity, len), unit: paramUnitMap.value['light_intensity'] || 'lux' }
   }
 
-  // 只保留选中的参数
-  const legendData = selectedParams.value.map(key => paramMap[key].name)
-  const series = selectedParams.value.map(key => ({
+  // 只保留选中的参数，过滤掉不存在的数据
+  const validParams = selectedParams.value.filter(key => paramMap[key])
+  const legendData = validParams.map(key => paramMap[key].name)
+  const series = validParams.map(key => ({
     name: paramMap[key].name,
     type: 'line',
     data: paramMap[key].data
@@ -1306,76 +1185,6 @@ const calcStatus = (value, min, max) => {
 const getThresholdConfig = (deviceId, paramType) => {
   const configs = thresholdMap.value[deviceId] || []
   return configs.find(c => c.paramType === paramType && c.isEnabled)
-}
-
-/**
- * 读取气象趋势数据缓存
- */
-const readTrendCache = () => {
-  const pastureId = currentPastureIdRef.value
-  if (!pastureId) return
-  const cacheKey = `weatherTrendData_${pastureId}`
-  const cache = localStorage.getItem(cacheKey)
-  if (cache) {
-    try {
-      const cacheObj = JSON.parse(cache)
-      if (cacheObj.ts && (Date.now() - cacheObj.ts < 86400000)) { //缓存24小时
-        cachedTrendData.value = cacheObj.data
-        // console.log(`[weatherTrendData] 从缓存读取成功:`, cacheKey, cacheObj)
-      } else {
-        localStorage.removeItem(cacheKey)
-        cachedTrendData.value = null
-        // console.log(`[weatherTrendData] 缓存已过期，已清除:`, cacheKey, cacheObj)
-      }
-    } catch (e) {
-      cachedTrendData.value = null
-      console.log(`[weatherTrendData] 解析缓存失败:`, cacheKey, cache)
-    }
-  } else {
-    console.log(`[weatherTrendData] 缓存不存在:`, cacheKey)
-  }
-}
-
-/**
- * 趋势分析
- * @param {String} paramName 参数名
- * @returns {Object} 趋势对象（type, text）
- */
-const getTrend = (paramName) => {
-  try {
-    // 使用安全的 computed 引用
-    const pastureId = currentPastureIdRef.value
-    if (!pastureId) {
-      return { type: 'info', text: '--' }
-    }
-    
-    // 从 deviceDataMap 中查找气象设备数据
-    let trendMsg = weatherTrendData.value || cachedTrendData.value
-    
-    // 如果没有趋势数据，尝试从 deviceDataMap 中查找
-    if (!trendMsg) {
-      const deviceListArr = (props.deviceList || []).filter(d => d && d.deviceTypeId == 1)
-      if (deviceListArr.length > 0) {
-        for (const device of deviceListArr) {
-          if (device && device.id) {
-            const data = deviceDataMap.value[String(device.id)]
-            if (data && data.pastureId && String(data.pastureId) === pastureId) {
-              trendMsg = data
-              break
-            }
-          }
-        }
-      }
-    }
-    
-    // 趋势数据暂时返回默认值，因为MQTT数据中没有趋势信息
-    // 如果需要趋势分析，需要从历史数据计算
-    return { type: 'info', text: '--' }
-  } catch (e) {
-    // 如果出现任何错误，返回默认值
-    console.error('getTrend error:', e)
-    return { type: 'info', text: '--' }
-  }
 }
 
 /**
@@ -1611,16 +1420,6 @@ onBeforeUnmount(() => {
           color: #909399;
           font-size: 14px;
           margin-bottom: 10px;
-        }
-        
-        .trend {
-          margin-top: 10px;
-          font-size: 14px;
-          
-          span {
-            color: #909399;
-            margin-right: 8px;
-          }
         }
       }
     }

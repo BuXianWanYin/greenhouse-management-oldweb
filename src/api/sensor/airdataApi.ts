@@ -53,4 +53,15 @@ export class AgricultureAirDataService {
             data: data
         })
     }
+
+      // 查询气象趋势数据
+  static getTrendData(pastureId: string | number, range: 'day' | 'week' | 'month' | '') {
+    return request.get<CodeMsgResult>({
+      url: '/device/airdata/trend',
+      params: {
+        pastureId,
+        range
+      }
+    })
+  }
 }
