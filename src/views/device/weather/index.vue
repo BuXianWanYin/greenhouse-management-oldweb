@@ -2,8 +2,8 @@
   <div class="weather-quality">
     <!-- 气象参数监测卡片区 -->
     <div class="monitor-cards">
-      <el-row style="display: flex; justify-content: space-between;">
-           <el-col style="width: 22%;" :span="4" v-for="item in monitorParams" :key="item.name">
+      <el-row :gutter="20">
+        <el-col :span="8" v-for="item in monitorParams" :key="item.name">
           <el-card class="box-card">
             <template #header>
               <div class="card-header">
@@ -12,15 +12,12 @@
               </div>
             </template>
             <div class="card-content">
-              <div
-                class="value"
-                :class="{ 'wind-direction-center': item.name === 'windDirection' }"
-              >
+              <div class="value">
                 {{ item.value }} {{ item.unit }}
               </div>
-              <div class="range" v-if="item.name !== 'windDirection'">安全范围: {{ item.range }}</div>
-              <el-progress v-if="item.name !== 'windDirection'" :percentage="item.percentage" :color="item.status.color" />
-              <div class="trend" v-if="item.name !== 'windDirection'">
+              <div class="range">安全范围: {{ item.range }}</div>
+              <el-progress :percentage="item.percentage" :color="item.status.color" />
+              <div class="trend">
                 <span>24h趋势:</span>
                 <el-tag v-if="item.trend" size="small" :type="item.trend.type">{{ item.trend.text }}</el-tag>
                 <span v-else>--</span>
@@ -40,7 +37,7 @@
             <div class="header-right">
               <el-select v-model="selectedParams" multiple size="small" style="width: 320px" placeholder="选择参数">
                 <el-option
-                  v-for="item in monitorParams.filter(i => i.name !== 'windDirection')"
+                  v-for="item in monitorParams"
                   :key="item.name"
                   :label="item.label"
                   :value="item.name"
@@ -59,58 +56,7 @@
       </el-card>
     </div>
 
-
-          <!-- 气象自动调节策略配置 -->
-    <el-row :gutter="20" class="strategy-config" style="align-items: stretch;">
-      <el-col :span="12" style="display: flex; flex-direction: column;display: none;">
-        <el-card class="box-card" style="flex: 1;">
-          <template #header>
-            <div class="card-header">
-              <span>自动调节策略</span>
-              <el-button type="primary" size="small" @click="addStrategy">新增策略</el-button>
-            </div>
-          </template>
-          <el-table :data="strategies" style="width: 100%">
-            <el-table-column prop="parameter" label="监测参数">
-              <template #default="scope">
-                {{ paramTypeDict[scope.row.parameter] || scope.row.parameter }}
-              </template>
-            </el-table-column>
-            <el-table-column label="触发条件" width="120">
-              <template #default="scope">
-                {{ scope.row.conditionOperator }} {{ scope.row.conditionValue }}{{ paramUnitMap[scope.row.parameter] || '' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="executeDuration" label="执行时长(秒)" width="120" />
-            <el-table-column label="执行动作/设备">
-              <template #default="scope">
-                {{ actionDict[scope.row.action] || scope.row.action }}
-                {{ getDeviceName(scope.row.deviceId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态">
-              <template #default="scope">
-                <el-switch
-                  v-model="scope.row.status"
-                  :active-value="1"
-                  :inactive-value="0"
-                  @change="onStrategyStatusChange(scope.row)"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column prop="description" label="策略说明" />
-
-            <el-table-column label="操作" width="150">
-              <template #default="scope">
-                <el-button link size="small" @click="onEditStrategy(scope.row)">编辑</el-button>
-                <el-button link size="small" @click="onDeleteStrategy(scope.row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-col>
-      <el-col :span="24" style="display: flex; flex-direction: column;">
-        <el-card class="box-card" style="flex: 1;">
+    <el-card class="box-card" style="flex: 1;">
           <template #header>
             <div class="card-header">
               <span>预警规则设置</span>
@@ -196,8 +142,6 @@
             </el-table-column>
           </el-table> -->
         </el-card>
-      </el-col>
-    </el-row>
 
        <!-- 气象异常报警列表 -->
        <div class="warning-list">
@@ -282,105 +226,6 @@
     </div>
     
 
-    <!-- 新增/编辑策略弹窗 -->
-    <el-dialog
-      v-model="strategyDialog"
-      :title="editingStrategy ? '编辑策略' : '新增策略'"
-      width="600px"
-    >
-      <el-form :model="strategyForm" label-width="100px">
-        <!-- 监测参数 -->
-        <el-form-item label="监测参数">
-          <el-select v-model="strategyForm.parameter" placeholder="请选择参数">
-              <el-option
-                v-for="item in paramTypeDictList.filter(i =>
-                  ['temperature', 'humidity', 'wind_speed', 'light_intensity', 'wind_direction'].includes(i.paramTypeEn)
-                )"
-                :key="item.paramTypeEn"
-                :label="item.paramTypeCn"
-                :value="item.paramTypeEn"
-              />
-            </el-select>
-        </el-form-item>
-        <!-- 触发条件 -->
-        <el-form-item label="触发条件">
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <el-select v-model="strategyForm.conditionOperator" placeholder="请选择" style="width: 120px;">
-              <el-option label="等于" value="=" />
-              <el-option label="大于" value=">" />
-              <el-option label="小于" value="<" />
-              <el-option label="大于等于" value=">=" />
-              <el-option label="小于等于" value="<=" />
-              <el-option label="不等于" value="!=" />
-            </el-select>
-            <el-input
-              v-model="strategyForm.conditionValue"
-              placeholder="请输入数值"
-              style="width: 120px;"
-              type="number"
-            />
-          </div>
-        </el-form-item>
-        <!-- 执行时长(秒) -->
-        <el-form-item label="执行时长(秒)">
-          <el-input
-            v-model="strategyForm.executeDuration"
-            placeholder="请输入执行时长"
-            style="width: 120px;"
-            type="number"
-            min="0"
-          />
-        </el-form-item>
-        <!-- 执行动作/设备 -->
-        <el-form-item label="执行动作/设备">
-          <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-            <el-select
-              v-model="strategyForm.action"
-              placeholder="请选择动作"
-              size="default"
-              style="width: 120px;"
-              @change="() => { strategyForm.deviceId = '' }"
-              filterable
-              clearable
-            >
-              <el-option label="打开" value="on" />
-              <el-option label="关闭" value="off" />
-            </el-select>
-            <el-select
-              v-model="strategyForm.deviceId"
-              placeholder="请选择设备"
-              size="default"
-              style="width: 180px;"
-              :disabled="!strategyForm.action"
-              filterable
-              clearable
-            >
-            <el-option
-                v-for="item in props.deviceList.filter(d => d.isControllable == 1)"
-                :key="item.id"
-                :label="item.deviceName"
-                :value="String(item.id)"
-              />
-            </el-select>
-          </div>
-        </el-form-item>
-        <!-- 启用状态 -->
-        <el-form-item label="启用状态">
-          <el-switch v-model="strategyForm.status" :active-value="1" :inactive-value="0" />
-        </el-form-item>
-        <!-- 策略说明 -->
-        <el-form-item label="策略说明">
-          <el-input v-model="strategyForm.description" type="textarea" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button type="primary" @click="saveStrategy">确定</el-button>
-          <el-button @click="strategyDialog = false">取消</el-button>
-        </span>
-      </template>
-    </el-dialog>
-
     <!-- 编辑预警规则弹窗 -->
     <el-dialog v-model="editDialogVisible" title="编辑预警规则" width="500px">
       <el-form :model="editForm" label-width="100px">
@@ -462,21 +307,21 @@ import { useUserStore } from '@/store/modules/user'//获取用户API
 
 // 2. 父组件传递的参数 props
 const props = defineProps({
-  pastureId: String,   // 大棚ID
-  batchId: String,     // 分区ID
+  pastureId: String,   // 温室ID
   deviceList: Array    // 设备列表
 })
 // 3. 变量/响应式数据定义
 
 // --- Pinia store 相关 ---
 const mqttStore = useMqttStore() // 获取 MQTT store 实例
-const { weatherTrendData, deviceDataMap } = storeToRefs(mqttStore) // 解构出气象趋势数据和设备数据映射
+const { deviceDataMap } = storeToRefs(mqttStore) // 解构出设备数据映射
+// weatherTrendData 不存在于 mqttStore 中，创建本地 ref
+const weatherTrendData = ref(null) // 本地气象趋势数据
 
 // --- 阈值、字典、缓存相关 ---
 const thresholdMap = ref({}) // 各设备阈值配置映射
 const cachedTrendData = ref(null) // 气象趋势数据缓存
 const paramTypeDict = ref({}) // 参数类型中英文对照字典
-const paramTypeDictList = ref([]) //策略下拉框
 // --- 预警相关 ---
 const userStore = useUserStore()
 const currentUser = computed(() => userStore.getUserInfo)
@@ -492,9 +337,6 @@ const handleForm = ref({
 })
 const isDetailMode = ref(false)
 
-// --- 策略相关 ---
-const strategyLoading = ref(false) // 策略加载状态
-const strategies = ref([]) // 自动调节策略列表
 const paramUnitMap = {  //单位映射
   wind_speed: 'm/s',
   humidity: '%',
@@ -516,9 +358,15 @@ const warningTotal = ref(0) // 预警列表总数
 const fetchWarningList = async () => {
   warningLoading.value = true
   try {
+    const pastureId = currentPastureIdRef.value
+    if (!pastureId) {
+      warningList.value = []
+      warningTotal.value = 0
+      return
+    }
+    
     const params = {
-      pastureId: props.pastureId,
-      batchId: props.batchId,
+      pastureId: pastureId,
       deviceType:'weather',
       pageNum: warningQueryParams.value.pageNum,
       pageSize: warningQueryParams.value.pageSize
@@ -546,7 +394,7 @@ const fetchWarningList = async () => {
 
 // --- 图表相关 ---
 const chartTimeRange = ref('day') // 趋势图时间范围
-const selectedParams = ref(['temperature', 'humidity', 'windSpeed', 'lightIntensity']) // 选中的气象参数
+const selectedParams = ref(['temperature', 'humidity', 'lightIntensity']) // 选中的气象参数
 const trendChart = ref(null) // 趋势图 DOM 引用
 let chartInstance = null // ECharts 实例
 const chartOption = ref({}) // 图表 option 配置
@@ -563,22 +411,6 @@ const currentPage = ref(1) // 当前页码
 const pageSize = ref(10) // 每页条数
 const dateRange = ref([]) // 检测记录日期范围
 
-// --- 策略弹窗相关 ---
-const strategyDialog = ref(false) // 策略弹窗显示状态
-const editingStrategy = ref(false) // 是否为编辑状态
-const strategyForm = ref({
-  pastureId: '',
-  batchId: '',
-  deviceId: '',
-  strategyType: 'weather',
-  parameter: '',
-  conditionOperator: '',
-  conditionValue: '',
-  executeDuration: 0,
-  action: '',
-  status: 1,
-  description: ''
-}) // 策略表单
 
 
 // 计算属性 computed
@@ -587,17 +419,36 @@ const strategyForm = ref({
  * 根据 deviceList 设备类型，自动生成气象参数卡片，包含温度、湿度、风速、光照强度、风向等
  */
  const monitorParams = computed(() => {
-  // 过滤出气象类设备
-  const deviceListArr = (props.deviceList || []).filter(d => d.deviceTypeId == 1)
-  // 获取各类设备ID
-  const windSpeedId = getDeviceIdByType(deviceListArr, '风速')
-  const windDirectionId = getDeviceIdByType(deviceListArr, '风向')
-  const weatherId = getDeviceIdByType(deviceListArr, '气象') || getDeviceIdByType(deviceListArr, '百叶箱')
+  // 过滤出气象类设备（deviceTypeId == 1）
+  const deviceListArr = (props.deviceList || []).filter(d => d && d.deviceTypeId == 1)
+  // 获取气象设备ID（通过设备名称匹配）
+  const weatherId = getDeviceIdByType(deviceListArr, '气象') || 
+                     getDeviceIdByType(deviceListArr, '百叶箱') ||
+                     (deviceListArr.length > 0 && deviceListArr[0] && deviceListArr[0].id ? deviceListArr[0].id : null)
 
-  // 获取各类设备数据
-  const windSpeedData = windSpeedId ? deviceDataMap.value[windSpeedId] : null
-  const windDirectionData = windDirectionId ? deviceDataMap.value[windDirectionId] : null
-  const weatherData = weatherId ? deviceDataMap.value[weatherId] : null
+  // 获取气象设备数据（从 deviceDataMap 中查找，topic 包含 air-data 的数据）
+  let weatherData = null
+  if (weatherId) {
+    weatherData = deviceDataMap.value[String(weatherId)]
+  }
+  
+  // 如果通过 deviceId 找不到，尝试从 deviceDataMap 中查找所有气象数据
+  if (!weatherData) {
+    for (const deviceId in deviceDataMap.value) {
+      const data = deviceDataMap.value[deviceId]
+      if (data && data.topic && (
+        data.topic.includes('air-data') || 
+        data.topic.includes('weather')
+      )) {
+        // 检查是否是当前温室的数据
+        const pastureId = currentPastureIdRef.value
+        if (pastureId && data.pastureId && String(data.pastureId) === pastureId) {
+          weatherData = data
+          break
+        }
+      }
+    }
+  }
 
   return [
     {
@@ -641,26 +492,6 @@ const strategyForm = ref({
       trend: getTrend('humidity')
     },
     {
-      name: 'windSpeed',
-      label: '风速',
-      value: windSpeedData?.windSpeed ?? '--',
-      unit: 'm/s',
-      range: getThresholdRange(windSpeedId, 'wind_speed'),
-      percentage: (() => {
-        const v = Number(windSpeedData?.windSpeed)
-        const config = getThresholdConfig(windSpeedId, 'wind_speed')
-        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
-      })(),
-      status: (() => {
-        const v = Number(windSpeedData?.windSpeed)
-        const config = getThresholdConfig(windSpeedId, 'wind_speed')
-        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
-      })(),
-      icon: Flag,
-      description: '影响作物倒伏和蒸发',
-      trend: getTrend('windSpeed')
-    },
-    {
       name: 'lightIntensity',
       label: '光照强度',
       value: weatherData?.illuminance ?? '--',
@@ -679,18 +510,6 @@ const strategyForm = ref({
       icon: Sunny,
       description: '影响光合作用',
       trend: getTrend('lightIntensity')
-    },
-    {
-      name: 'windDirection',
-      label: '风向',
-      value: windDirectionData?.windDirection ?? '--',
-      unit: '',
-      range: '',
-      percentage: '', // 风向不做百分比
-      status: { type: 'success', text: '无阈值', color: '#67C23A' }, // 风向不做阈值判断
-      icon: Compass,
-      description: '',
-      trend: ''
     },
   ]
 })
@@ -714,72 +533,154 @@ const strategyForm = ref({
 // 侦听器 watch
 
 /**
- * 侦听气象趋势数据 weatherTrendData 的变化
- * 1. 如果数据属于当前大棚/分区，则写入本地缓存
+ * 安全地获取 pastureId 字符串
  */
- watch(
-  weatherTrendData,
+const currentPastureIdRef = computed(() => {
+  try {
+    // 使用可选链和空值合并来安全访问
+    if (!props) {
+      return null
+    }
+    const id = props.pastureId
+    if (id == null || id === '') {
+      return null
+    }
+    // 安全地转换为字符串
+    return String(id)
+  } catch (e) {
+    console.error('currentPastureIdRef error:', e)
+    return null
+  }
+})
+
+// 监听 deviceDataMap 的变化，筛选出气象设备数据并更新 weatherTrendData
+watch(
+  deviceDataMap,
   (newVal) => {
-    if (
-      newVal &&
-      newVal.deviceInfo &&
-      String(newVal.deviceInfo.pastureId) === String(props.pastureId) &&
-      String(newVal.deviceInfo.batchId) === String(props.batchId)
-    ) {
-      // 打印日志
-      console.log('本页面大棚/分区趋势数据:', newVal)
-      // 写入缓存
-      const cacheKey = `weatherTrendData_${props.pastureId}_${props.batchId}`
-      const cacheObj = {
-        data: newVal,
-        ts: Date.now() // 当前时间戳
+    try {
+      const pastureId = currentPastureIdRef.value
+      if (!pastureId) {
+        return
       }
-      localStorage.setItem(cacheKey, JSON.stringify(cacheObj))
-      console.log(`[weatherTrendData] 已写入缓存:`, cacheKey, cacheObj)
+      
+      // 遍历 deviceDataMap，找到匹配的气象设备数据
+      if (!newVal || typeof newVal !== 'object') {
+        return
+      }
+      
+      // 查找气象设备数据（topic 包含 air-data）
+      for (const deviceId in newVal) {
+        try {
+          const deviceData = newVal[deviceId]
+          if (!deviceData || typeof deviceData !== 'object') {
+            continue
+          }
+          
+          // MQTT 数据格式：data 直接包含 pastureId，没有 deviceInfo 包装
+          // 检查是否是气象数据（通过 topic 判断）
+          const topic = deviceData.topic
+          if (!topic || typeof topic !== 'string') {
+            continue
+          }
+          
+          const isWeatherData = topic.includes('air-data') || topic.includes('weather')
+          
+          // 检查 pastureId 是否匹配（数据直接在 data 对象中）
+          const dataPastureId = deviceData.pastureId
+          if (dataPastureId == null) {
+            continue
+          }
+          
+          // 安全地转换为字符串进行比较
+          const dataPastureIdStr = String(dataPastureId)
+          
+          if (isWeatherData && dataPastureIdStr === pastureId) {
+            // 写入缓存
+            const cacheKey = `weatherTrendData_${pastureId}`
+            const cacheObj = {
+              data: deviceData,
+              ts: Date.now()
+            }
+            localStorage.setItem(cacheKey, JSON.stringify(cacheObj))
+            weatherTrendData.value = deviceData
+            cachedTrendData.value = deviceData
+            console.log(`[weatherTrendData] 已写入缓存:`, cacheKey, cacheObj)
+          }
+        } catch (e) {
+          console.error('处理设备数据错误:', e, deviceId)
+        }
+      }
+    } catch (e) {
+      console.error('watch deviceDataMap for weatherTrendData error:', e)
     }
   },
-  { immediate: true }
+  { immediate: false, deep: true }
 )
 
 /**
- * 侦听 pastureId、batchId、deviceList 的变化
+ * 侦听 pastureId、deviceList 的变化
  * 1. 设备列表变化时加载阈值和订阅
  * 2. id变化时刷新报警规则、读取缓存
  * 3. id变化时读取趋势缓存
  * 4. 每次变化都请求气象趋势数据
  */
- watch(
-  () => [props.pastureId, props.batchId, props.deviceList],
+// 使用 computed 来安全地访问 props
+const propsWatchSource = computed(() => {
+  try {
+    // 确保 props 存在且是对象
+    if (!props || typeof props !== 'object') {
+      return [null, null]
+    }
+    // 安全地访问 props 属性
+    const pastureId = props.pastureId
+    const deviceList = props.deviceList
+    return [
+      (pastureId != null && pastureId !== '') ? pastureId : null,
+      (deviceList && Array.isArray(deviceList)) ? deviceList : null
+    ]
+  } catch (e) {
+    console.error('propsWatchSource error:', e)
+    return [null, null]
+  }
+})
+
+watch(
+  propsWatchSource,
   async (
-    [newPastureId, newBatchId, newDeviceList],
-    [oldPastureId, oldBatchId, oldDeviceList] = []
+    [newPastureId, newDeviceList],
+    [oldPastureId, oldDeviceList] = []
   ) => {
-    // 1. 设备列表变化时加载阈值和订阅
-    if (newDeviceList !== oldDeviceList) {
-      const weatherDevices = (newDeviceList || []).filter(d => d.deviceTypeId == 1)
-      const deviceIds = weatherDevices.map(d => d.id)
-      await loadThresholds(deviceIds)
-      if (newDeviceList && newDeviceList.length > 0) {
-        console.log('watch订阅设备列表:', newDeviceList)
-        mqttStore.subscribeAllDeviceTopics(newDeviceList)
-        loadStrategies(); // 加载自动策略
+    try {
+      // 1. 设备列表变化时加载阈值和订阅
+      if (newDeviceList !== oldDeviceList && newDeviceList) {
+        const weatherDevices = (newDeviceList || []).filter(d => d && d.deviceTypeId == 1)
+        const deviceIds = weatherDevices.map(d => d && d.id).filter(id => id != null)
+        if (deviceIds.length > 0) {
+          await loadThresholds(deviceIds)
+        }
+        if (newDeviceList && newDeviceList.length > 0) {
+          console.log('watch订阅设备列表:', newDeviceList)
+          mqttStore.subscribeAllDeviceTopics(newDeviceList)
+        }
       }
+      // 2. id变化时刷新报警规则、读取缓存
+      if (newPastureId !== oldPastureId && newPastureId) {
+        // 先读取缓存，保证 deviceDataMap 有数据
+        readDeviceDataMapCache()
+        loadAlarmRules(newPastureId) // 刷新报警规则
+        fetchWarningList() // <<=== 加载气象异常预警数据
+      }
+      // 3. id变化时读取趋势缓存
+      if (newPastureId) {
+        readTrendCache()
+      }
+      // 4. 每次变化都请求气象趋势数据
+      fetchWeatherTrendData()
+    } catch (e) {
+      console.error('watch propsWatchSource error:', e)
     }
-    // 2. id变化时刷新报警规则、读取缓存
-    if (newPastureId !== oldPastureId || newBatchId !== oldBatchId) {
-      // 先读取缓存，保证 deviceDataMap 有数据
-      readDeviceDataMapCache()
-      loadAlarmRules(newPastureId, newBatchId) // 刷新报警规则
-      fetchWarningList() // <<=== 加载气象异常预警数据
-    }
-    // 3. id变化时读取趋势缓存
-    if (newPastureId && newBatchId) {
-      readTrendCache()
-    }
-    // 4. 每次变化都请求气象趋势数据
-    fetchWeatherTrendData()
   },
-  { immediate: true, deep: true }
+  { immediate: false, deep: true }
 )
 
 //侦听自动处理时间
@@ -809,14 +710,21 @@ watch([chartTimeRange, selectedParams], () => {
  * 变化时写入本地缓存
  */
 watch(deviceDataMap, (newVal) => {
-  if (props.pastureId && props.batchId) {
-    const cacheKey = `deviceDataMap_${props.pastureId}_${props.batchId}`
+  try {
+    const pastureId = currentPastureIdRef.value
+    if (!pastureId) {
+      return
+    }
+    
+    const cacheKey = `deviceDataMap_${pastureId}`
     const cacheObj = {
       data: newVal,
       ts: Date.now()
     }
     localStorage.setItem(cacheKey, JSON.stringify(cacheObj))
     // console.log(`[deviceDataMap] 已写入缓存:`, cacheKey, cacheObj)
+  } catch (e) {
+    console.error('watch deviceDataMap error:', e)
   }
 }, { deep: true })
 
@@ -834,7 +742,7 @@ watch([warningLevel, warningStatus], () => {
  * 组件挂载时执行
  * 1. 读取设备数据缓存，保证 deviceDataMap 有数据
  * 2. 初始化 ECharts 实例
- * 3. 加载策略、报警规则、参数字典
+ * 3. 加载报警规则、参数字典
  */
  onMounted(() => {
   // 先读取缓存，保证 deviceDataMap 有数据
@@ -847,12 +755,11 @@ watch([warningLevel, warningStatus], () => {
       fetchWeatherTrendData()
     }
   })
-  // 加载自动调节策略
-  if (props.pastureId && props.batchId) {
-    loadStrategies();
-  }
   // 加载报警规则
-  loadAlarmRules(props.pastureId, props.batchId)
+  const pastureId = currentPastureIdRef.value
+  if (pastureId) {
+    loadAlarmRules(pastureId)
+  }
   // 加载参数类型字典
   loadParamTypeDict()
   // 加载气象异常预警数据
@@ -877,146 +784,19 @@ onBeforeUnmount(() => {
 
 
 // 方法
-// ========== 策略相关 ==========
-/**
- * 加载自动调节策略列表
- */
- const loadStrategies = async () => {
-  strategyLoading.value = true
-  try {
-    const params = {
-      pastureId: props.pastureId,
-      batchId: props.batchId,
-      strategyType: 'weather'
-    }
-    // 只有有值时才加 deviceId
-    if (strategyForm.value.deviceId) {
-      params.deviceId = strategyForm.value.deviceId
-    }
-    // 策略API已删除
-    // const res = await AgricultureAutoControlStrategyService.listStrategy(params)
-    // if (res && Array.isArray(res.rows)) {
-    //   strategies.value = res.rows;
-    // } else {
-    //   strategies.value = [];
-    // }
-    strategies.value = [];
-  } finally {
-    strategyLoading.value = false
-  }
-}
-
-/**
- * 新增策略弹窗
- */
-const addStrategy = () => {
-  editingStrategy.value = false
-  strategyForm.value = {
-    pastureId: props.pastureId,
-    batchId: props.batchId,
-    deviceId: '',
-    strategyType: 'weather',
-    parameter: '',
-    conditionOperator: '',
-    conditionValue: '',
-    executeDuration: 0,
-    action: '',
-    status: 1,
-    description: ''
-  }
-  strategyDialog.value = true
-}
-
-/**
- * 编辑策略弹窗
- * @param {Object} row 策略行数据
- */
-const onEditStrategy = (row) => {
-  editingStrategy.value = true
-  strategyForm.value = {
-    ...row,
-    deviceId: row.deviceId ? String(row.deviceId) : ''
-  }
-  strategyDialog.value = true
-}
-
-/**
- * 保存策略（新增或编辑）
- */
- const saveStrategy = async () => {
-  if (!strategyForm.value.conditionOperator || !strategyForm.value.conditionValue) {
-    ElMessage.warning('请填写完整的触发条件')
-    return
-  }
-  try {
-    // 策略API已删除
-    // if (editingStrategy.value) {
-    //   await AgricultureAutoControlStrategyService.updateStrategy(strategyForm.value)
-    //   ElMessage.success('策略修改成功')
-    // } else {
-    //   await AgricultureAutoControlStrategyService.addStrategy(strategyForm.value)
-    //   ElMessage.success('策略添加成功')
-    // }
-    ElMessage.warning('策略功能已移除')
-    strategyForm.value.deviceId = ''
-    strategyDialog.value = false
-    loadStrategies()
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-/**
- * 删除策略
- * @param {Object} row 策略行数据
- */
-const onDeleteStrategy = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该策略吗？', '提示', { type: 'warning' })
-    // 策略API已删除
-    // await AgricultureAutoControlStrategyService.deleteStrategy(row.id)
-    ElMessage.warning('策略功能已移除')
-    loadStrategies()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
-  }
-}
-
-/**
- * 策略状态改变
- * @param {Object} row 策略行数据
- */
-const onStrategyStatusChange = async (row) => {
-  try {
-    // 策略API已删除
-    // await AgricultureAutoControlStrategyService.updateStrategy({
-    //   ...row,
-    //   status: row.status ? 1 : 0 // 1 或 0
-    // });
-    ElMessage.warning('策略功能已移除')
-    // 恢复原状态
-    row.status = !row.status
-  } catch (e) {
-    ElMessage.error('状态更新失败');
-    // 恢复原状态
-    row.status = !row.status
-  }
-};
-
 // ========== 报警规则相关 ==========
 /**
  * 加载报警规则
- * @param {String} pastureId 大棚ID
- * @param {String} batchId 分区ID
+ * @param {String} pastureId 温室ID
  */
-const loadAlarmRules = async (pastureId, batchId) => {
+const loadAlarmRules = async (pastureId) => {
   const deviceType = 1 // 设备类型
-  if (!pastureId || !batchId) {
+  if (!pastureId) {
     alarmRules.value = []
     return
   }
   try {
-    const res = await AgricultureThresholdConfigService.listByPastureAndBatch(pastureId, batchId, deviceType)
+    const res = await AgricultureThresholdConfigService.listByPastureAndBatch(pastureId, null, deviceType)
     if (res && res.data && Array.isArray(res.data)) {
       alarmRules.value = res.data.map(item => {
         let threshold = ''
@@ -1080,7 +860,10 @@ const onEditAlarmRuleSave = async () => {
     })
     ElMessage.success('保存成功')
     editDialogVisible.value = false
-    loadAlarmRules(props.pastureId, props.batchId)
+    const pastureId = currentPastureIdRef.value
+    if (pastureId) {
+      loadAlarmRules(pastureId)
+    }
   } catch (e) {
     ElMessage.error('保存失败')
   }
@@ -1095,7 +878,7 @@ const onDeleteAlarmRule = async (row) => {
     await ElMessageBox.confirm('确定要删除该报警规则吗？', '提示', { type: 'warning' })
     await AgricultureThresholdConfigService.deleteConfig(row.id)
     ElMessage.success('删除成功')
-    loadAlarmRules(props.pastureId, props.batchId)
+    loadAlarmRules(props.pastureId)
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
   }
@@ -1112,7 +895,7 @@ const onAlarmRuleStatusChange = async (row) => {
       isEnabled: row.status ? 1 : 0
     })
     ElMessage.success('状态更新成功')
-    loadAlarmRules(props.pastureId, props.batchId)
+    loadAlarmRules(props.pastureId)
   } catch (e) {
     ElMessage.error('状态更新失败')
     // 恢复原状态
@@ -1265,11 +1048,11 @@ const showControlDetail = (control) => {
 const fetchWeatherTrendData = async () => {
   trendChartLoading.value = true
   try {
-    if (props.pastureId && props.batchId) {
+    const pastureId = currentPastureIdRef.value
+    if (pastureId) {
       // 气象数据API已删除
       // const res = await AgricultureWeatherDataService.getTrendData({
       //   pastureId: props.pastureId,
-      //   batchId: props.batchId,
       //   range: chartTimeRange.value
       // })
       // if (res && res.code === 200 && res.data) {
@@ -1482,7 +1265,9 @@ const getThresholdConfig = (deviceId, paramType) => {
  * 读取气象趋势数据缓存
  */
 const readTrendCache = () => {
-  const cacheKey = `weatherTrendData_${props.pastureId}_${props.batchId}`
+  const pastureId = currentPastureIdRef.value
+  if (!pastureId) return
+  const cacheKey = `weatherTrendData_${pastureId}`
   const cache = localStorage.getItem(cacheKey)
   if (cache) {
     try {
@@ -1510,32 +1295,40 @@ const readTrendCache = () => {
  * @returns {Object} 趋势对象（type, text）
  */
 const getTrend = (paramName) => {
-  let trendMsg = weatherTrendData.value
-  if (
-    !trendMsg ||
-    !trendMsg.deviceInfo ||
-    String(trendMsg.deviceInfo.pastureId) !== String(props.pastureId) ||
-    String(trendMsg.deviceInfo.batchId) !== String(props.batchId)
-  ) {
-    trendMsg = cachedTrendData.value
+  try {
+    // 使用安全的 computed 引用
+    const pastureId = currentPastureIdRef.value
+    if (!pastureId) {
+      return { type: 'info', text: '--' }
+    }
+    
+    // 从 deviceDataMap 中查找气象设备数据
+    let trendMsg = weatherTrendData.value || cachedTrendData.value
+    
+    // 如果没有趋势数据，尝试从 deviceDataMap 中查找
+    if (!trendMsg) {
+      const deviceListArr = (props.deviceList || []).filter(d => d && d.deviceTypeId == 1)
+      if (deviceListArr.length > 0) {
+        for (const device of deviceListArr) {
+          if (device && device.id) {
+            const data = deviceDataMap.value[String(device.id)]
+            if (data && data.pastureId && String(data.pastureId) === pastureId) {
+              trendMsg = data
+              break
+            }
+          }
+        }
+      }
+    }
+    
+    // 趋势数据暂时返回默认值，因为MQTT数据中没有趋势信息
+    // 如果需要趋势分析，需要从历史数据计算
+    return { type: 'info', text: '--' }
+  } catch (e) {
+    // 如果出现任何错误，返回默认值
+    console.error('getTrend error:', e)
+    return { type: 'info', text: '--' }
   }
-  if (
-    trendMsg &&
-    trendMsg.deviceInfo &&
-    String(trendMsg.deviceInfo.pastureId) === String(props.pastureId) &&
-    String(trendMsg.deviceInfo.batchId) === String(props.batchId) &&
-    trendMsg.data &&
-    trendMsg.data[paramName] &&
-    trendMsg.data[paramName].trend
-  ) {
-    let type = 'info'
-    if (trendMsg.data[paramName].trend === '上升') type = 'warning'
-    else if (trendMsg.data[paramName].trend === '下降') type = 'warning'
-    else if (trendMsg.data[paramName].trend === '剧烈下降') type = 'danger'
-    else if (trendMsg.data[paramName].trend === '稳定') type = 'success'
-    return { type, text: trendMsg.data[paramName].trend }
-  }
-  return { type: 'info', text: '--' }
 }
 
 /**
@@ -1568,7 +1361,9 @@ const getDeviceIdByType = (devices, keyword) => {
  * 读取设备数据缓存到 store
  */
 const readDeviceDataMapCache = () => {
-  const cacheKey = `deviceDataMap_${props.pastureId}_${props.batchId}`
+  const pastureId = currentPastureIdRef.value
+  if (!pastureId) return
+  const cacheKey = `deviceDataMap_${pastureId}`
   const cache = localStorage.getItem(cacheKey)
   if (cache) {
     try {
@@ -1596,14 +1391,6 @@ function formatDateTime(date) {
     pad(date.getSeconds())
 }
 /**
- * 动作英文转中文
- */
-const actionDict = {
-  on: '打开',
-  off: '关闭'
-}
-
-/**
  * 获取设备名
  * @param {String} deviceId 设备ID
  * @returns {String} 设备名
@@ -1623,7 +1410,6 @@ const loadParamTypeDict = async () => {
       paramTypeDict.value = Object.fromEntries(
         res.rows.map(item => [item.paramTypeEn, item.paramTypeCn])
       )
-      paramTypeDictList.value = res.rows
       
     }
   } catch (e) {
@@ -1762,9 +1548,6 @@ onBeforeUnmount(() => {
     }
   }
   
-  .strategy-config {
-    margin-bottom: 20px;
-  }
   
   .warning-list {
     margin-bottom: 20px;

@@ -1,6 +1,6 @@
 <template>
-  <div class="water-quality">
-    <!-- 水质参数监测卡片区 -->
+  <div class="soil-quality">
+    <!-- 土壤参数监测卡片区 -->
     <div class="monitor-cards">
       <el-row :gutter="20">
         <el-col :span="6" v-for="item in monitorParams" :key="item.name">
@@ -14,7 +14,6 @@
             <div class="card-content">
               <div
                 class="value"
-                :class="{ 'wind-direction-center': item.name === 'windDirection' }"
               >
                 {{ item.value }} {{ item.unit }}
               </div>
@@ -31,14 +30,14 @@
       </el-row>
     </div>
 
-      <!-- 水质历史趋势图表 -->
+      <!-- 气象历史趋势图表 -->
     <div class="trend-charts">
       <el-card class="box-card">
         <template #header>
           <div class="card-header">
-            <span>水质参数历史趋势</span>
+            <span>土壤参数历史趋势</span>
             <div class="header-right">
-              <el-select v-model="selectedParams" multiple size="small" style="width: 290px" placeholder="选择参数">
+              <el-select v-model="selectedParams" multiple size="small" style="width: 320px" placeholder="选择参数">
                 <el-option
                   v-for="item in monitorParams"
                   :key="item.name"
@@ -59,59 +58,7 @@
       </el-card>
     </div>
 
-
-    
-    <!-- 水质自动调节策略配置   隐藏-->
-    <el-row :gutter="20" class="strategy-config" style="align-items: stretch; ">
-      <el-col :span="12" style="display: flex; flex-direction: column;display: none;">
-        <el-card class="box-card" style="flex: 1;">
-          <template #header>
-            <div class="card-header">
-              <span>自动调节策略</span>
-              <el-button type="primary" size="small" @click="addStrategy">新增策略</el-button>
-            </div>
-          </template>
-          <el-table :data="strategies" style="width: 100%">
-            <el-table-column prop="parameter" label="监测参数">
-              <template #default="scope">
-                {{ paramTypeDict[scope.row.parameter] || scope.row.parameter }}
-              </template>
-            </el-table-column>
-            <el-table-column label="触发条件" width="120">
-              <template #default="scope">
-                {{ scope.row.conditionOperator }} {{ scope.row.conditionValue }}{{ paramUnitMap[scope.row.parameter] || '' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="executeDuration" label="执行时长(秒)" width="120" />
-            <el-table-column label="执行动作/设备">
-              <template #default="scope">
-                {{ actionDict[scope.row.action] || scope.row.action }}
-                {{ getDeviceName(scope.row.deviceId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态">
-              <template #default="scope">
-                <el-switch
-                  v-model="scope.row.status"
-                  :active-value="1"
-                  :inactive-value="0"
-                  @change="onStrategyStatusChange(scope.row)"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column prop="description" label="策略说明" />
-
-            <el-table-column label="操作" width="150">
-              <template #default="scope">
-                <el-button link size="small" @click="onEditStrategy(scope.row)">编辑</el-button>
-                <el-button link size="small" @click="onDeleteStrategy(scope.row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-col>
-      <el-col :span="24" style="display: flex; flex-direction: column;">
-        <el-card class="box-card" style="flex: 1;">
+    <el-card class="box-card" style="flex: 1;">
           <template #header>
             <div class="card-header">
               <span>预警规则设置</span>
@@ -197,15 +144,13 @@
             </el-table-column>
           </el-table> -->
         </el-card>
-      </el-col>
-    </el-row>
 
-       <!-- 水质异常预警列表 -->
+       <!-- 土壤异常报警列表 -->
        <div class="warning-list">
       <el-card class="box-card">
         <template #header>
           <div class="card-header">
-            <span>水质异常预警</span>
+            <span>土壤异常报警</span>
             <div class="header-right">
               <el-select v-model="warningLevel" size="small" placeholder="预警级别">
                 <el-option label="全部" value="" />
@@ -258,6 +203,15 @@
               {{ scope.row.remark || '/' }}
             </template>
           </el-table-column>
+          <!-- <el-table-column prop="alertType" label="偏低/偏高">
+            <template #default="scope">
+              <el-tag :type="scope.row.alertType === 'LOW' ? 'info' : 'danger'">
+                {{ scope.row.alertType === 'LOW' ? '偏低' : '偏高' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="deviceName" label="设备" />
+          <el-table-column prop="alertMessage" label="说明" /> -->
           <el-table-column label="操作">
             <template #default="scope">
               <el-button link size="small" @click="onHandleWarning(scope.row)">处理</el-button>
@@ -273,108 +227,6 @@
       </el-card>
     </div>
     
-
-
- 
-
-    <!-- 新增/编辑策略弹窗 -->
-    <el-dialog
-      v-model="strategyDialog"
-      :title="editingStrategy ? '编辑策略' : '新增策略'"
-      width="600px"
-    >
-      <el-form :model="strategyForm" label-width="100px">
-        <!-- 监测参数 -->
-        <el-form-item label="监测参数">
-          <el-select v-model="strategyForm.parameter" placeholder="请选择参数">
-              <el-option
-                v-for="item in paramTypeDictList.filter(i =>
-                  ['ph_value', 'dissolved_oxygen', 'ammonia_nitrogen', 'water_temperature'].includes(i.paramTypeEn)
-                )"
-                :key="item.paramTypeEn"
-                :label="item.paramTypeCn"
-                :value="item.paramTypeEn"
-              />
-            </el-select>
-        </el-form-item>
-        <!-- 触发条件 -->
-        <el-form-item label="触发条件">
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <el-select v-model="strategyForm.conditionOperator" placeholder="请选择" style="width: 120px;">
-              <el-option label="等于" value="=" />
-              <el-option label="大于" value=">" />
-              <el-option label="小于" value="<" />
-              <el-option label="大于等于" value=">=" />
-              <el-option label="小于等于" value="<=" />
-              <el-option label="不等于" value="!=" />
-            </el-select>
-            <el-input
-              v-model="strategyForm.conditionValue"
-              placeholder="请输入数值"
-              style="width: 120px;"
-              type="number"
-            />
-          </div>
-        </el-form-item>
-        <!-- 执行时长(秒) -->
-        <el-form-item label="执行时长(秒)">
-          <el-input
-            v-model="strategyForm.executeDuration"
-            placeholder="请输入执行时长"
-            style="width: 120px;"
-            type="number"
-            min="0"
-          />
-        </el-form-item>
-        <!-- 执行动作/设备 -->
-        <el-form-item label="执行动作/设备">
-          <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-            <el-select
-              v-model="strategyForm.action"
-              placeholder="请选择动作"
-              size="default"
-              style="width: 120px;"
-              @change="() => { strategyForm.deviceId = '' }"
-              filterable
-              clearable
-            >
-              <el-option label="打开" value="on" />
-              <el-option label="关闭" value="off" />
-            </el-select>
-            <el-select
-              v-model="strategyForm.deviceId"
-              placeholder="请选择设备"
-              size="default"
-              style="width: 180px;"
-              :disabled="!strategyForm.action"
-              filterable
-              clearable
-            >
-            <el-option
-                v-for="item in props.deviceList.filter(d => d.isControllable == 1)"
-                :key="item.id"
-                :label="item.deviceName"
-                :value="String(item.id)"
-              />
-            </el-select>
-          </div>
-        </el-form-item>
-        <!-- 启用状态 -->
-        <el-form-item label="启用状态">
-          <el-switch v-model="strategyForm.status" :active-value="1" :inactive-value="0" />
-        </el-form-item>
-        <!-- 策略说明 -->
-        <el-form-item label="策略说明">
-          <el-input v-model="strategyForm.description" type="textarea" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button type="primary" @click="saveStrategy">确定</el-button>
-          <el-button @click="strategyDialog = false">取消</el-button>
-        </span>
-      </template>
-    </el-dialog>
 
     <!-- 编辑预警规则弹窗 -->
     <el-dialog v-model="editDialogVisible" title="编辑预警规则" width="500px">
@@ -405,6 +257,7 @@
       <template #footer>
         <el-button type="primary" @click="onEditAlarmRuleSave">保存</el-button>
         <el-button @click="editDialogVisible = false">取消</el-button>
+
       </template>
     </el-dialog>
 
@@ -454,24 +307,21 @@ import { ParamTypeDictService } from '@/api/device/typedictApi' // 参数字典 
 import { AgricultureDeviceSensorAlertService } from '@/api/sensor/alertApi'// 报警信息API
 import { useUserStore } from '@/store/modules/user'//获取用户API
 
-
 // 2. 父组件传递的参数 props
 const props = defineProps({
-  pastureId: String,   // 大棚ID
-  batchId: String,     // 分区ID
+  pastureId: String,   // 温室ID
   deviceList: Array    // 设备列表
 })
 // 3. 变量/响应式数据定义
 
 // --- Pinia store 相关 ---
 const mqttStore = useMqttStore() // 获取 MQTT store 实例
-const { waterQualityTrendData, deviceDataMap } = storeToRefs(mqttStore);
+const { deviceDataMap } = storeToRefs(mqttStore) // 解构出设备数据映射
 
 // --- 阈值、字典、缓存相关 ---
 const thresholdMap = ref({}) // 各设备阈值配置映射
-const cachedTrendData = ref(null) // 气象趋势数据缓存
+const cachedTrendData = ref(null) // 土壤趋势数据缓存
 const paramTypeDict = ref({}) // 参数类型中英文对照字典
-const paramTypeDictList = ref([]) //策略下拉框
 // --- 预警相关 ---
 const userStore = useUserStore()
 const currentUser = computed(() => userStore.getUserInfo)
@@ -487,22 +337,21 @@ const handleForm = ref({
 })
 const isDetailMode = ref(false)
 
-// --- 策略相关 ---
-const strategyLoading = ref(false) // 策略加载状态
-const strategies = ref([]) // 自动调节策略列表
 const paramUnitMap = {  //单位映射
-  // 水质参数单位
-  dissolved_oxygen: 'mg/L',
+  soil_temperature: '℃',
+  soil_humidity: 'm³/m³',
+  conductivity: 'µS/cm',
+  salinity: 'mg/L',
+  nitrogen: 'mg/kg',
+  phosphorus: 'mg/kg',
+  potassium: 'mg/kg',
   ph_value: '',
-  water_temperature: '℃',
-  ammonia_nitrogen: 'mg/L',
 }
 // --- 报警规则相关 ---
 const alarmRules = ref([]) // 报警规则列表
 let updateTimeTimer = null //定时器
 const warningList = ref([])
 const warningLoading = ref(false)
-const trendChartLoading = ref(false)
 // --- 分页相关 ---
 const warningQueryParams = ref({
   pageNum: 1,
@@ -515,8 +364,7 @@ const fetchWarningList = async () => {
   try {
     const params = {
       pastureId: props.pastureId,
-      batchId: props.batchId,
-      deviceType:'water',
+      deviceType:'soil',
       pageNum: warningQueryParams.value.pageNum,
       pageSize: warningQueryParams.value.pageSize
     }
@@ -543,116 +391,200 @@ const fetchWarningList = async () => {
 
 // --- 图表相关 ---
 const chartTimeRange = ref('day') // 趋势图时间范围
-const selectedParams = ref(['do', 'ph', 'temperature', 'ammonia']); // 选中的水质参数
+const selectedParams = ref(['soilTemperature', 'soilHumidity', 'conductivity', 'phValue']) // 选中的土壤参数
 const trendChart = ref(null) // 趋势图 DOM 引用
 let chartInstance = null // ECharts 实例
+const chartOption = ref({}) // 图表 option 配置
+const trendChartLoading = ref(false)
 
 // --- 其他界面状态 ---
+const analysisDrawer = ref(false) // 数据分析抽屉显示状态
+const analysisTab = ref('trend') // 当前分析 tab
 const warningLevel = ref('') // 预警等级筛选 '' | 'warning' | 'danger'
 const warningStatus = ref('') // 预警状态筛选 '' | 0 | 1
 const editDialogVisible = ref(false) // 编辑报警规则弹窗显示状态
 const editForm = ref({}) // 编辑报警规则表单
+const currentPage = ref(1) // 当前页码
+const pageSize = ref(10) // 每页条数
+const dateRange = ref([]) // 检测记录日期范围
 
-
-// --- 策略弹窗相关 ---
-const strategyDialog = ref(false) // 策略弹窗显示状态
-const editingStrategy = ref(false) // 是否为编辑状态
-const strategyForm = ref({
-  pastureId: '',
-  batchId: '',
-  deviceId: '',
-  strategyType: 'water',
-  parameter: '',
-  conditionOperator: '',
-  conditionValue: '',
-  executeDuration: 0,
-  action: '',
-  status: 1,
-  description: ''
-}) // 策略表单
 
 
 // 计算属性 computed
 /**
  * 动态监测参数卡片
- * 根据 deviceList 设备类型，自动生成气象参数卡片，包含温度、湿度、风速、光照强度、风向等
+ * 根据 deviceList 设备类型，自动生成土壤参数卡片，包含土壤温度、湿度、电导率、盐分等
  */
  const monitorParams = computed(() => {
-  const data = currentWaterData.value || {}
-  const deviceId = currentWaterDeviceId.value
+  // 过滤出土壤类设备
+  const deviceListArr = (props.deviceList || []).filter(d => d && d.deviceTypeId == 3)
+  // 获取土壤设备ID
+  const soilId = getDeviceIdByType(deviceListArr, '土壤') || (deviceListArr[0] && deviceListArr[0].id) || null
+
+  // 获取设备数据
+  const soilData = soilId ? deviceDataMap.value[soilId] : null
+
   return [
     {
-      name: 'do',
-      label: '溶解氧(DO)',
-      value: data.dissolvedOxygen ?? '--',
-      unit: 'mg/L',
-      range: getThresholdRange(deviceId, 'dissolved_oxygen'),
-      percentage: (() => {
-        const v = Number(data.dissolvedOxygen)
-        const config = getThresholdConfig(deviceId, 'dissolved_oxygen')
-        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
-      })(),
-      status: (() => {
-        const v = Number(data.dissolvedOxygen)
-        const config = getThresholdConfig(deviceId, 'dissolved_oxygen')
-        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
-      })(),
-      trend: getTrend('do')
-    },
-    {
-      name: 'ph',
-      label: 'pH值',
-      value: data.phValue ?? '--',
-      unit: '',
-      range: getThresholdRange(deviceId, 'ph_value'),
-      percentage: (() => {
-        const v = Number(data.phValue)
-        const config = getThresholdConfig(deviceId, 'ph_value')
-        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
-      })(),
-      status: (() => {
-        const v = Number(data.phValue)
-        const config = getThresholdConfig(deviceId, 'ph_value')
-        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
-      })(),
-      trend: getTrend('ph')
-    },
-    {
-      name: 'temperature',
-      label: '水温',
-      value: data.waterTemperature ?? '--',
+      name: 'soilTemperature',
+      label: '土壤温度',
+      value: soilData?.soilTemperature ?? '--',
       unit: '℃',
-      range: getThresholdRange(deviceId, 'water_temperature'),
+      range: getThresholdRange(soilId, 'soil_temperature'),
       percentage: (() => {
-        const v = Number(data.waterTemperature)
-        const config = getThresholdConfig(deviceId, 'water_temperature')
+        const v = Number(soilData?.soilTemperature)
+        const config = getThresholdConfig(soilId, 'soil_temperature')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
-        const v = Number(data.waterTemperature)
-        const config = getThresholdConfig(deviceId, 'water_temperature')
+        const v = Number(soilData?.soilTemperature)
+        const config = getThresholdConfig(soilId, 'soil_temperature')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
-      trend: getTrend('temperature')
+      icon: ColdDrink,
+      description: '影响作物根系生长',
+      trend: getTrend('soilTemperature')
     },
     {
-      name: 'ammonia',
-      label: '氨氮',
-      value: data.ammoniaNitrogen ?? '--',
-      unit: 'mg/L',
-      range: getThresholdRange(deviceId, 'ammonia_nitrogen'),
+      name: 'soilHumidity',
+      label: '土壤湿度',
+      value: soilData?.soilHumidity ?? '--',
+      unit: 'm³/m³',
+      range: getThresholdRange(soilId, 'soil_humidity'),
       percentage: (() => {
-        const v = Number(data.ammoniaNitrogen)
-        const config = getThresholdConfig(deviceId, 'ammonia_nitrogen')
+        const v = Number(soilData?.soilHumidity)
+        const config = getThresholdConfig(soilId, 'soil_humidity')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
-        const v = Number(data.ammoniaNitrogen)
-        const config = getThresholdConfig(deviceId, 'ammonia_nitrogen')
+        const v = Number(soilData?.soilHumidity)
+        const config = getThresholdConfig(soilId, 'soil_humidity')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
-      trend: getTrend('ammonia')
-    }
+      icon: IceDrink,
+      description: '影响作物水分吸收',
+      trend: getTrend('soilHumidity')
+    },
+    {
+      name: 'conductivity',
+      label: '土壤电导率',
+      value: soilData?.conductivity ?? '--',
+      unit: 'µS/cm',
+      range: getThresholdRange(soilId, 'conductivity'),
+      percentage: (() => {
+        const v = Number(soilData?.conductivity)
+        const config = getThresholdConfig(soilId, 'conductivity')
+        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
+      })(),
+      status: (() => {
+        const v = Number(soilData?.conductivity)
+        const config = getThresholdConfig(soilId, 'conductivity')
+        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
+      })(),
+      icon: Flag,
+      description: '反映土壤盐分含量',
+      trend: getTrend('conductivity')
+    },
+    {
+      name: 'phValue',
+      label: '土壤pH值',
+      value: soilData?.phValue ?? '--',
+      unit: '',
+      range: getThresholdRange(soilId, 'ph_value'),
+      percentage: (() => {
+        const v = Number(soilData?.phValue)
+        const config = getThresholdConfig(soilId, 'ph_value')
+        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
+      })(),
+      status: (() => {
+        const v = Number(soilData?.phValue)
+        const config = getThresholdConfig(soilId, 'ph_value')
+        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
+      })(),
+      icon: Sunny,
+      description: '影响养分吸收',
+      trend: getTrend('phValue')
+    },
+    {
+      name: 'salinity',
+      label: '土壤盐分',
+      value: soilData?.salinity ?? '--',
+      unit: 'mg/kg',
+      range: getThresholdRange(soilId, 'salinity'),
+      percentage: (() => {
+        const v = Number(soilData?.salinity)
+        const config = getThresholdConfig(soilId, 'salinity')
+        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
+      })(),
+      status: (() => {
+        const v = Number(soilData?.salinity)
+        const config = getThresholdConfig(soilId, 'salinity')
+        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
+      })(),
+      icon: Flag,
+      description: '影响作物生长',
+      trend: getTrend('salinity')
+    },
+    {
+      name: 'nitrogen',
+      label: '土壤氮含量',
+      value: soilData?.nitrogen ?? '--',
+      unit: 'mg/kg',
+      range: getThresholdRange(soilId, 'nitrogen'),
+      percentage: (() => {
+        const v = Number(soilData?.nitrogen)
+        const config = getThresholdConfig(soilId, 'nitrogen')
+        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
+      })(),
+      status: (() => {
+        const v = Number(soilData?.nitrogen)
+        const config = getThresholdConfig(soilId, 'nitrogen')
+        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
+      })(),
+      icon: Sunny,
+      description: '影响作物营养',
+      trend: getTrend('nitrogen')
+    },
+    {
+      name: 'phosphorus',
+      label: '土壤磷含量',
+      value: soilData?.phosphorus ?? '--',
+      unit: 'mg/kg',
+      range: getThresholdRange(soilId, 'phosphorus'),
+      percentage: (() => {
+        const v = Number(soilData?.phosphorus)
+        const config = getThresholdConfig(soilId, 'phosphorus')
+        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
+      })(),
+      status: (() => {
+        const v = Number(soilData?.phosphorus)
+        const config = getThresholdConfig(soilId, 'phosphorus')
+        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
+      })(),
+      icon: Sunny,
+      description: '影响作物营养',
+      trend: getTrend('phosphorus')
+    },
+    {
+      name: 'potassium',
+      label: '土壤钾含量',
+      value: soilData?.potassium ?? '--',
+      unit: 'mg/kg',
+      range: getThresholdRange(soilId, 'potassium'),
+      percentage: (() => {
+        const v = Number(soilData?.potassium)
+        const config = getThresholdConfig(soilId, 'potassium')
+        return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
+      })(),
+      status: (() => {
+        const v = Number(soilData?.potassium)
+        const config = getThresholdConfig(soilId, 'potassium')
+        return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
+      })(),
+      icon: Sunny,
+      description: '影响作物营养',
+      trend: getTrend('potassium')
+    },
   ]
 })
 
@@ -670,77 +602,50 @@ const strategyForm = ref({
     }
   }
   thresholdMap.value = map
-
 }
-
 
 // 侦听器 watch
 
-/**
- * 侦听气象趋势数据  waterQualityTrendData 的变化
- * 1. 如果数据属于当前大棚/分区，则写入本地缓存
- */
- watch(
-   waterQualityTrendData,
-  (newVal) => {
-    if (
-      newVal &&
-      newVal.deviceInfo &&
-      String(newVal.deviceInfo.pastureId) === String(props.pastureId) &&
-      String(newVal.deviceInfo.batchId) === String(props.batchId)
-    ) {
-      // 打印日志
-      console.log('本页面大棚/分区趋势数据:', newVal)
-      // 写入缓存
-      const cacheKey = ` waterQualityTrendData_${props.pastureId}_${props.batchId}`
-      const cacheObj = {
-        data: newVal,
-        ts: Date.now() // 当前时间戳
-      }
-      localStorage.setItem(cacheKey, JSON.stringify(cacheObj))
-      // console.log(`[ waterQualityTrendData] 已写入缓存:`, cacheKey, cacheObj)
-    }
-  },
-  { immediate: true }
-)
+// 注意：土壤数据暂时不使用趋势数据缓存，后续如有需要可以添加
 
 /**
- * 侦听 pastureId、batchId、deviceList 的变化
+ * 侦听 pastureId、deviceList 的变化
  * 1. 设备列表变化时加载阈值和订阅
  * 2. id变化时刷新报警规则、读取缓存
  * 3. id变化时读取趋势缓存
- * 4. 每次变化都请求气象趋势数据
+ * 4. 每次变化都请求土壤趋势数据
  */
  watch(
-  () => [props.pastureId, props.batchId, props.deviceList],
+  () => [props.pastureId, props.deviceList],
   async (
-    [newPastureId, newBatchId, newDeviceList],
-    [oldPastureId, oldBatchId, oldDeviceList] = []
+    [newPastureId, newDeviceList],
+    [oldPastureId, oldDeviceList] = []
   ) => {
     // 1. 设备列表变化时加载阈值和订阅
     if (newDeviceList !== oldDeviceList) {
-      const waterDevices = (newDeviceList || []).filter(d => d.deviceTypeId == 2)
-      const deviceIds = waterDevices.map(d => d.id)
-      await loadThresholds(deviceIds)
+      const soilDevices = (newDeviceList || []).filter(d => d && d.deviceTypeId == 3)
+      const deviceIds = soilDevices.map(d => d && d.id).filter(id => id != null)
+      if (deviceIds.length > 0) {
+        await loadThresholds(deviceIds)
+      }
       if (newDeviceList && newDeviceList.length > 0) {
         console.log('watch订阅设备列表:', newDeviceList)
         mqttStore.subscribeAllDeviceTopics(newDeviceList)
-        loadStrategies(); // 加载自动策略
       }
     }
     // 2. id变化时刷新报警规则、读取缓存
-    if (newPastureId !== oldPastureId || newBatchId !== oldBatchId) {
+    if (newPastureId !== oldPastureId) {
       // 先读取缓存，保证 deviceDataMap 有数据
       readDeviceDataMapCache()
-      loadAlarmRules(newPastureId, newBatchId) // 刷新报警规则
-      fetchWarningList() // <<=== 加载气象异常预警数据
+      loadAlarmRules(newPastureId) // 刷新报警规则
+      fetchWarningList() // <<=== 加载土壤异常预警数据
     }
     // 3. id变化时读取趋势缓存
-    if (newPastureId && newBatchId) {
+    if (newPastureId) {
       readTrendCache()
     }
-    // 4. 每次变化都请求水质趋势数据
-    fetchWeatherTrendData()
+    // 4. 每次变化都请求土壤趋势数据
+    fetchSoilTrendData()
   },
   { immediate: true, deep: true }
 )
@@ -761,10 +666,10 @@ watch(handleDialogVisible, (visible) => {
 })
 /**
  * 侦听 chartTimeRange 和 selectedParams 的变化
- * 变化时刷新水质趋势图
+ * 变化时刷新土壤趋势图
  */
 watch([chartTimeRange, selectedParams], () => {
-  fetchWeatherTrendData()
+  fetchSoilTrendData()
 })
 
 /**
@@ -772,8 +677,8 @@ watch([chartTimeRange, selectedParams], () => {
  * 变化时写入本地缓存
  */
 watch(deviceDataMap, (newVal) => {
-  if (props.pastureId && props.batchId) {
-    const cacheKey = `deviceDataMap_${props.pastureId}_${props.batchId}`
+  if (props.pastureId) {
+    const cacheKey = `deviceDataMap_${props.pastureId}`
     const cacheObj = {
       data: newVal,
       ts: Date.now()
@@ -797,7 +702,7 @@ watch([warningLevel, warningStatus], () => {
  * 组件挂载时执行
  * 1. 读取设备数据缓存，保证 deviceDataMap 有数据
  * 2. 初始化 ECharts 实例
- * 3. 加载策略、报警规则、参数字典
+ * 3. 加载报警规则、参数字典
  */
  onMounted(() => {
   // 先读取缓存，保证 deviceDataMap 有数据
@@ -807,18 +712,14 @@ watch([warningLevel, warningStatus], () => {
     if (trendChart.value) {
       chartInstance = echarts.init(trendChart.value)
       window._echarts = chartInstance // 可全局调试
-      fetchWeatherTrendData() 
+      fetchSoilTrendData()
     }
   })
-  // 加载自动调节策略
-  if (props.pastureId && props.batchId) {
-    loadStrategies();
-  }
   // 加载报警规则
-  loadAlarmRules(props.pastureId, props.batchId)
+  loadAlarmRules(props.pastureId)
   // 加载参数类型字典
   loadParamTypeDict()
-  // 加载气象异常预警数据
+  // 加载土壤异常预警数据
   fetchWarningList()  
 })
 
@@ -840,164 +741,35 @@ onBeforeUnmount(() => {
 
 
 // 方法
-// ========== 策略相关 ==========
-/**
- * 加载自动调节策略列表
- */
- const loadStrategies = async () => {
-  strategyLoading.value = true
-  try {
-    const params = {
-      pastureId: props.pastureId,
-      batchId: props.batchId,
-      strategyType: 'water'
-    }
-    // 只有有值时才加 deviceId
-    if (strategyForm.value.deviceId) {
-      params.deviceId = strategyForm.value.deviceId
-    }
-    // 策略API已删除
-    // const res = await AgricultureAutoControlStrategyService.listStrategy(params)
-    // if (res && Array.isArray(res.rows)) {
-    //   strategies.value = res.rows;
-    // } else {
-    //   strategies.value = [];
-    // }
-    strategies.value = [];
-  } finally {
-    strategyLoading.value = false
-  }
-}
-
-/**
- * 新增策略弹窗
- */
-const addStrategy = () => {
-  editingStrategy.value = false
-  strategyForm.value = {
-    pastureId: props.pastureId,
-    batchId: props.batchId,
-    deviceId: '',
-    strategyType: 'water',
-    parameter: '',
-    conditionOperator: '',
-    conditionValue: '',
-    executeDuration: 0,
-    action: '',
-    status: 1,
-    description: ''
-  }
-  strategyDialog.value = true
-}
-
-/**
- * 编辑策略弹窗
- * @param {Object} row 策略行数据
- */
-const onEditStrategy = (row) => {
-  editingStrategy.value = true
-  strategyForm.value = {
-    ...row,
-    deviceId: row.deviceId ? String(row.deviceId) : ''
-  }
-  strategyDialog.value = true
-}
-
-/**
- * 保存策略（新增或编辑）
- */
- const saveStrategy = async () => {
-  if (!strategyForm.value.conditionOperator || !strategyForm.value.conditionValue) {
-    ElMessage.warning('请填写完整的触发条件')
-    return
-  }
-  try {
-    // 策略API已删除
-    // if (editingStrategy.value) {
-    //   await AgricultureAutoControlStrategyService.updateStrategy(strategyForm.value)
-    //   ElMessage.success('策略修改成功')
-    // } else {
-    //   await AgricultureAutoControlStrategyService.addStrategy(strategyForm.value)
-    //   ElMessage.success('策略添加成功')
-    // }
-    ElMessage.warning('策略功能已移除')
-    strategyForm.value.deviceId = ''
-    strategyDialog.value = false
-    loadStrategies()
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-/**
- * 删除策略
- * @param {Object} row 策略行数据
- */
-const onDeleteStrategy = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该策略吗？', '提示', { type: 'warning' })
-    // 策略API已删除
-    // await AgricultureAutoControlStrategyService.deleteStrategy(row.id)
-    ElMessage.warning('策略功能已移除')
-    loadStrategies()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
-  }
-}
-
-/**
- * 策略状态改变
- * @param {Object} row 策略行数据
- */
-const onStrategyStatusChange = async (row) => {
-  try {
-    // 策略API已删除
-    // await AgricultureAutoControlStrategyService.updateStrategy({
-    //   ...row,
-    //   status: row.status ? 1 : 0 // 1 或 0
-    // });
-    ElMessage.warning('策略功能已移除')
-    // 恢复原状态
-    row.status = !row.status
-  } catch (e) {
-    ElMessage.error('状态更新失败');
-    // 恢复原状态
-    row.status = !row.status
-  }
-};
-
 // ========== 报警规则相关 ==========
 /**
  * 加载报警规则
- * @param {String} pastureId 大棚ID
- * @param {String} batchId 分区ID
+ * @param {String} pastureId 温室ID
  */
-const loadAlarmRules = async (pastureId, batchId) => {
-  const deviceType = 2 // 设备类型
-  if (!pastureId || !batchId) {
+const loadAlarmRules = async (pastureId) => {
+  const deviceType = 3 // 设备类型
+  if (!pastureId) {
     alarmRules.value = []
     return
   }
   try {
-    const res = await AgricultureThresholdConfigService.listByPastureAndBatch(pastureId, batchId, deviceType)
+    const res = await AgricultureThresholdConfigService.listByPastureAndBatch(pastureId, null, deviceType)
     if (res && res.data && Array.isArray(res.data)) {
-      alarmRules.value = res.data.map(item => {
+      alarmRules.value = res.data.filter(item => item).map(item => {
         let threshold = ''
         const min = item.thresholdMin
         const max = item.thresholdMax
         const unit = item.unit || ''
-        // ph_value 不拼接单位
-        const isPh = item.paramType === 'ph_value'
         if (min != null && max != null && min !== '' && max !== '') {
           if (min === max) {
-            threshold = isPh ? `${min}` : `${min}${unit}`
+            threshold = `${min}${unit}`
           } else {
-            threshold = isPh ? `${min} - ${max}` : `${min}${unit} - ${max}${unit}`
+            threshold = `${min}${unit} ~ ${max}${unit}`
           }
         } else if (min != null && min !== '') {
-          threshold = isPh ? `大于 ${min}` : `大于 ${min}${unit}`
+          threshold = `大于 ${min}${unit}`
         } else if (max != null && max !== '') {
-          threshold = isPh ? `小于 ${max}` : `小于 ${max}${unit}`
+          threshold = `小于 ${max}${unit}`
         } else {
           threshold = '--'
         }
@@ -1045,7 +817,7 @@ const onEditAlarmRuleSave = async () => {
     })
     ElMessage.success('保存成功')
     editDialogVisible.value = false
-    loadAlarmRules(props.pastureId, props.batchId)
+    loadAlarmRules(props.pastureId)
   } catch (e) {
     ElMessage.error('保存失败')
   }
@@ -1060,7 +832,7 @@ const onDeleteAlarmRule = async (row) => {
     await ElMessageBox.confirm('确定要删除该报警规则吗？', '提示', { type: 'warning' })
     await AgricultureThresholdConfigService.deleteConfig(row.id)
     ElMessage.success('删除成功')
-    loadAlarmRules(props.pastureId, props.batchId)
+    loadAlarmRules(props.pastureId)
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
   }
@@ -1077,7 +849,7 @@ const onAlarmRuleStatusChange = async (row) => {
       isEnabled: row.status ? 1 : 0
     })
     ElMessage.success('状态更新成功')
-    loadAlarmRules(props.pastureId, props.batchId)
+    loadAlarmRules(props.pastureId)
   } catch (e) {
     ElMessage.error('状态更新失败')
     // 恢复原状态
@@ -1131,6 +903,8 @@ const onDetailWarning = (row) => {
   }
   handleDialogVisible.value = true
 }
+
+
 
 
 // 分页大小改变
@@ -1223,16 +997,15 @@ const showControlDetail = (control) => {
 
 // ========== 图表相关 ==========
 /**
- * 请求水质趋势数据
+ * 请求土壤趋势数据
  */
-const fetchWeatherTrendData = async () => {
+const fetchSoilTrendData = async () => {
   trendChartLoading.value = true
   try {
-    if (props.pastureId && props.batchId) {
-      // 水质数据API已删除
-      // const res = await AgricultureWaterQualityDataService.getTrendData({
+    if (props.pastureId) {
+      // 土壤数据API待实现
+      // const res = await AgricultureSoilDataService.getTrendData({
       //   pastureId: props.pastureId,
-      //   batchId: props.batchId,
       //   range: chartTimeRange.value
       // })
       // if (res && res.code === 200 && res.data) {
@@ -1240,7 +1013,7 @@ const fetchWeatherTrendData = async () => {
       // }
     }
   } catch (error) {
-    console.error('请求气象趋势数据失败:', error)
+    console.error('请求土壤趋势数据失败:', error)
   } finally {
     trendChartLoading.value = false
   }
@@ -1250,80 +1023,96 @@ const fetchWeatherTrendData = async () => {
  * 处理数据，生成 ECharts option 并渲染趋势图
  * @param {Object} data 趋势数据
  */
- function updateTrendChart(data) {
-const xAxisData = data.xAxis;
-const paramMap = {
-  do: { name: '溶解氧', data: data.dissolved_oxygen, unit: 'mg/L' },
-  ph: { name: 'pH值', data: data.ph_value, unit: '' },
-  temperature: { name: '水温', data: data.water_temperature, unit: '℃' },
-  ammonia: { name: '氨氮', data: data.ammonia_nitrogen, unit: 'mg/L' }
-};
-const legendData = selectedParams.value.map(key => paramMap[key].name);
-const series = selectedParams.value.map(key => ({
-  name: paramMap[key].name,
-  type: 'line',
-  data: paramMap[key].data
-}));
+function updateTrendChart(data) {
+  const xAxisData = data.xAxis
+  const len = xAxisData.length
 
-const isWeek = chartTimeRange.value === 'week';
-const option = {
-  grid: { 
-  left: isWeek ? '2%' : '2%',
-  right: isWeek ? '2%' : '2%',
-  top: 60,
-  bottom: 40,
-  containLabel: true 
-  },
-  tooltip: {
-    trigger: 'axis',
-    formatter: function(params) {
-      let html = params[0].axisValue + '<br/>';
-      params.forEach(item => {
-        let unit = '';
-        for (const k in paramMap) {
-          if (paramMap[k].name === item.seriesName) {
-            unit = paramMap[k].unit;
-            break;
-          }
-        }
-        html += `${item.marker}${item.seriesName} <b>${item.data}${unit}</b><br/>`;
-      });
-      return html;
+  function fixSeriesData(arr, len) {
+    if (!arr) return Array(len).fill(0)
+    const fixed = arr.map(v => v == null ? 0 : v)
+    if (fixed.length < len) {
+      return fixed.concat(Array(len - fixed.length).fill(0))
     }
-  },
-  legend: { data: legendData },
-  xAxis: {
+    return fixed
+  }
+
+  // 参数映射
+  const paramMap = {
+    soilTemperature: { name: '土壤温度', data: fixSeriesData(data.soilTemperature, len), unit: '℃' },
+    soilHumidity: { name: '土壤湿度', data: fixSeriesData(data.soilHumidity, len), unit: 'm³/m³' },
+    conductivity: { name: '土壤电导率', data: fixSeriesData(data.conductivity, len), unit: 'µS/cm' },
+    phValue: { name: '土壤pH值', data: fixSeriesData(data.phValue, len), unit: '' }
+  }
+
+  // 只保留选中的参数
+  const legendData = selectedParams.value.map(key => paramMap[key].name)
+  const series = selectedParams.value.map(key => ({
+    name: paramMap[key].name,
+    type: 'line',
+    data: paramMap[key].data
+  }))
+
+  const isWeek = chartTimeRange.value === 'week';
+
+  const option = {
+    grid: {
+      left: isWeek ? '5%' : '2%',
+      right: isWeek ? '3%' : '2%',
+      top: 60,
+      bottom: 40,
+      containLabel: true
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: function(params) {
+        let html = params[0].axisValue + '<br/>';
+        params.forEach(item => {
+          // 找到 unit
+          let unit = ''
+          for (const k in paramMap) {
+            if (paramMap[k].name === item.seriesName) {
+              unit = paramMap[k].unit
+              break
+            }
+          }
+          html += `${item.marker}${item.seriesName} <b>${item.data}${unit}</b><br/>`;
+        });
+        return html;
+      }
+    },
+    legend: { data: legendData },
+    xAxis: {
       type: 'category',
       data: xAxisData,
       boundaryGap: false
     },
-  yAxis: { type: 'value' },
-  series
-};
-if (chartInstance) {
-  chartInstance.setOption(option, true);
+    yAxis: { type: 'value' },
+    series
+  }
+
+  if (chartInstance) {
+    chartInstance.setOption(option, true)
+  }
 }
+
+// ========== 分页与数据相关 ==========
+/**
+ * 分页大小变化
+ * @param {Number} val 新的每页条数
+ */
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  getList()
 }
 
-// ========== 数据相关 ==========
-
-// 获取当前大棚/分区下的第一个水质设备ID
-const currentWaterDeviceId = computed(() => {
-  const waterDevice = (props.deviceList || []).find(
-    d => d.deviceTypeId == 2 // 2为水质设备类型
-      && String(d.pastureId) === String(props.pastureId)
-      && String(d.batchId) === String(props.batchId)
-  )
-  return waterDevice ? String(waterDevice.id) : null
-})
-
-// 获取最新水质数据
-const currentWaterData = computed(() => {
-  const id = currentWaterDeviceId.value
-  if (!id) return null
-  return deviceDataMap.value[id] || null
-})
-
+/**
+ * 当前页码变化
+ * @param {Number} val 新的页码
+ */
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  getList()
+}
 
 /**
  * 获取数据列表（可根据实际业务补充）
@@ -1381,6 +1170,7 @@ const getNotifyTagType = (notify) => {
   if (value <= min) return 0
   if (value >= max) return 100
   const percent = Math.round(((value - min) / (max - min)) * 100)
+  // 保证百分比在0~100之间
   return Math.max(0, Math.min(100, percent))
 }
 
@@ -1425,28 +1215,25 @@ const getThresholdConfig = (deviceId, paramType) => {
 }
 
 /**
- * 读取气象趋势数据缓存
+ * 读取土壤趋势数据缓存
  */
 const readTrendCache = () => {
-  const cacheKey = ` waterQualityTrendData_${props.pastureId}_${props.batchId}`
+  if (!props.pastureId) return
+  const cacheKey = `soilTrendData_${props.pastureId}`
   const cache = localStorage.getItem(cacheKey)
   if (cache) {
     try {
       const cacheObj = JSON.parse(cache)
       if (cacheObj.ts && (Date.now() - cacheObj.ts < 86400000)) { //缓存24小时
         cachedTrendData.value = cacheObj.data
-        // console.log(`[ waterQualityTrendData] 从缓存读取成功:`, cacheKey, cacheObj)
       } else {
         localStorage.removeItem(cacheKey)
         cachedTrendData.value = null
-        // console.log(`[ waterQualityTrendData] 缓存已过期，已清除:`, cacheKey, cacheObj)
       }
     } catch (e) {
       cachedTrendData.value = null
-      console.log(`[ waterQualityTrendData] 解析缓存失败:`, cacheKey, cache)
+      console.log(`[soilTrendData] 解析缓存失败:`, cacheKey, cache)
     }
-  } else {
-    console.log(`[ waterQualityTrendData] 缓存不存在:`, cacheKey)
   }
 }
 
@@ -1455,33 +1242,8 @@ const readTrendCache = () => {
  * @param {String} paramName 参数名
  * @returns {Object} 趋势对象（type, text）
  */
- const getTrend = (paramName) => {
-  // paramName: 'do', 'ph', 'ammonia', 'temperature'
-  const trendMsg = waterQualityTrendData.value
-  if (
-    !trendMsg ||
-    !trendMsg.deviceInfo ||
-    String(trendMsg.deviceInfo.pastureId) !== String(props.pastureId) ||
-    String(trendMsg.deviceInfo.batchId) !== String(props.batchId)
-  ) {
-    return { type: 'info', text: '--' }
-  }
-  // 字段映射
-  const fieldMap = {
-    do: 'dissolvedOxygen',
-    ph: 'ph',
-    ammonia: 'ammoniaNitrogen',
-    temperature: 'waterTemperature'
-  }
-  const field = fieldMap[paramName]
-  const trendObj = trendMsg.data && trendMsg.data[field]
-  if (trendObj && trendObj.trend) {
-    let type = 'info'
-    if (trendObj.trend === '上升') type = 'warning'
-    else if (trendObj.trend === '下降') type = 'warning'
-    else if (trendObj.trend === '稳定') type = 'success'
-    return { type, text: trendObj.trend }
-  }
+const getTrend = (paramName) => {
+  // 土壤趋势数据暂时返回空，后续如有需要可以添加
   return { type: 'info', text: '--' }
 }
 
@@ -1491,12 +1253,11 @@ const readTrendCache = () => {
  * @param {String} paramType 参数类型
  * @returns {String} 阈值范围字符串
  */
- const getThresholdRange = (deviceId, paramType) => {
-  const config = getThresholdConfig(deviceId, paramType)
+const getThresholdRange = (deviceId, paramType) => {
+  const configs = thresholdMap.value[deviceId] || []
+  const config = configs.find(c => c.paramType === paramType && c.isEnabled)
   if (config && config.thresholdMin != null && config.thresholdMax != null) {
-    // ph_value 不拼接单位
-    const unit = paramType === 'ph_value' ? '' : (config.unit || '')
-    return `${config.thresholdMin}${unit} - ${config.thresholdMax}${unit}`
+    return `${config.thresholdMin}${config.unit || ''} - ${config.thresholdMax}${config.unit || ''}`
   }
   return '--'
 }
@@ -1508,15 +1269,17 @@ const readTrendCache = () => {
  * @returns {String|null} 设备ID
  */
 const getDeviceIdByType = (devices, keyword) => {
-  const dev = devices.find(d => d.deviceTypeId == 2 && d.deviceName && d.deviceName.includes(keyword))
-  return dev ? dev.id : null
+  if (!devices || !Array.isArray(devices)) return null
+  const dev = devices.find(d => d && d.deviceTypeId == 3 && d.deviceName && d.deviceName.includes(keyword))
+  return dev && dev.id ? dev.id : null
 }
 
 /**
  * 读取设备数据缓存到 store
  */
 const readDeviceDataMapCache = () => {
-  const cacheKey = `deviceDataMap_${props.pastureId}_${props.batchId}`
+  if (!props.pastureId) return
+  const cacheKey = `deviceDataMap_${props.pastureId}`
   const cache = localStorage.getItem(cacheKey)
   if (cache) {
     try {
@@ -1544,21 +1307,14 @@ function formatDateTime(date) {
     pad(date.getSeconds())
 }
 /**
- * 动作英文转中文
- */
-const actionDict = {
-  on: '打开',
-  off: '关闭'
-}
-
-/**
  * 获取设备名
  * @param {String} deviceId 设备ID
  * @returns {String} 设备名
  */
 const getDeviceName = (deviceId) => {
-  const dev = (props.deviceList || []).find(d => d.id == deviceId);
-  return dev ? dev.deviceName : deviceId || '';
+  if (!deviceId) return ''
+  const dev = (props.deviceList || []).find(d => d && d.id == deviceId);
+  return dev && dev.deviceName ? dev.deviceName : (deviceId || '');
 }
 
 /**
@@ -1571,7 +1327,6 @@ const loadParamTypeDict = async () => {
       paramTypeDict.value = Object.fromEntries(
         res.rows.map(item => [item.paramTypeEn, item.paramTypeCn])
       )
-      paramTypeDictList.value = res.rows
       
     }
   } catch (e) {
@@ -1579,18 +1334,23 @@ const loadParamTypeDict = async () => {
   }
 }
 
-// ECharts自适应窗口宽度
 function resizeChart() {
   if (chartInstance) {
     chartInstance.resize()
   }
 }
+onMounted(() => {
+  window.addEventListener('resize', resizeChart)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeChart)
+})
 
 
 </script>
 
 <style lang="scss" scoped>
-.water-quality {
+.soil-quality {
   padding: 20px;
   
   .dashboard-header {
@@ -1705,9 +1465,6 @@ function resizeChart() {
     }
   }
   
-  .strategy-config {
-    margin-bottom: 20px;
-  }
   
   .warning-list {
     margin-bottom: 20px;

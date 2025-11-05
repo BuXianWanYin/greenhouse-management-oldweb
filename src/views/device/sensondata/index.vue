@@ -13,20 +13,25 @@
         <el-menu-item index="weather">
           <el-icon class="menu-icon"><Sunny /></el-icon><span>气象数据</span>
         </el-menu-item>
-        <el-menu-item index="water">
-          <el-icon class="menu-icon"><Monitor /></el-icon><span>水质数据</span>
+        <el-menu-item index="soil">
+          <el-icon class="menu-icon"><Monitor /></el-icon><span>土壤数据</span>
         </el-menu-item>
         <div style="display: flex; align-items: center; margin-left: 24px;">
-          <el-cascader
-            v-model="queryCascader"
-            :props="cascaderProps"
-            placeholder="请选择大棚和分区"
+          <el-select
+            v-model="queryPastureId"
+            placeholder="请选择温室"
             clearable
             style="width: 300px"
-            :loading="cascaderLoading"
-            :options="cascaderOptions"
-            @change="handleCascaderChange"
-          />
+            :loading="pastureLoading"
+            @change="handlePastureChange"
+          >
+            <el-option
+              v-for="item in pastureOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
         </div>
       </el-menu>
     </div>
@@ -35,8 +40,7 @@
         <component
           :is="currentComponent"
           :key="activeMenu"
-          :pasture-id="queryCascader[0]"
-          :batch-id="queryCascader[1]"
+          :pasture-id="queryPastureId"
           :device-list="currentDevices"
         />
       </transition>
@@ -49,97 +53,77 @@ import { ref, computed } from 'vue'
 import { Select, Sunny, Monitor } from '@element-plus/icons-vue'
 import { AgricultureDeviceService } from '@/api/device/deviceApi'
 // 动态导入页面组件
-import WaterIndex from '../water/index.vue'
+import SoilIndex from '../soil/index.vue'
 import WeatherIndex from '../weather/index.vue'
 import { AgriculturePastureService } from '@/api/agriculture/pastureApi'
-import { AgricultureCropBatchService } from '@/api/agriculture/batchApi'
 
 const activeMenu = ref('weather')
 
 const currentComponent = computed(() => {
-  return activeMenu.value === 'water' ? WaterIndex : WeatherIndex
+  return activeMenu.value === 'soil' ? SoilIndex : WeatherIndex
 })
 
 function handleMenuSelect(key) {
   activeMenu.value = key
 }
 
-const currentDevices = ref([]) // 存储当前分区下的设备
+const currentDevices = ref([]) // 存储当前温室下的设备
 
-// 级联选择器相关
-const queryCascader = ref([])
-const cascaderLoading = ref(false)
-const cascaderOptions = ref([])
+// 温室选择器相关
+const queryPastureId = ref('')
+const pastureLoading = ref(false)
+const pastureOptions = ref([])
 
-const cascaderProps = {
-  lazy: true,
-  value: 'value',
-  label: 'label',
-  async lazyLoad(node, resolve) {
-    const { level, value } = node
-    try {
-      cascaderLoading.value = true
-      if (level === 0) {
-        // 加载大棚列表
-        const res = await AgriculturePastureService.listPasture({ pageNum: 1, pageSize: 100 })
-        if (res.code === 200) {
-          const pastureList = res.rows.map((item) => ({
-            value: String(item.id),
-            label: item.name,
-            leaf: false
-          }))
-          resolve(pastureList)
-        } else {
-          resolve([])
-        }
-      } else if (level === 1) {
-        // 加载分区列表
-        const res = await AgricultureCropBatchService.listBatchByPasture(value)
-        if (res.code === 200) {
-          const batchList = (res.data || []).map((item) => ({
-            value: String(item.batchId),
-            label: item.batchName,
-            leaf: true
-          }))
-          resolve(batchList)
-        } else {
-          resolve([])
-        }
-      }
-    } catch (e) {
-      resolve([])
-    } finally {
-      cascaderLoading.value = false
+// 加载温室列表
+const loadPastureOptions = async () => {
+  pastureLoading.value = true
+  try {
+    const res = await AgriculturePastureService.listPasture({ pageNum: 1, pageSize: 100 })
+    if (res.code === 200) {
+      pastureOptions.value = res.rows.map((item) => ({
+        value: String(item.id),
+        label: item.name
+      }))
     }
+  } catch (e) {
+    console.error('加载温室列表失败:', e)
+  } finally {
+    pastureLoading.value = false
   }
 }
 
-const handleCascaderChange = async (val) => {
-  const [pastureId, batchId] = val
-  // 查询该分区下的设备
-  const res = await AgricultureDeviceService.listDevice({ pastureId, batchId})
+const handlePastureChange = async (pastureId) => {
+  if (!pastureId) {
+    currentDevices.value = []
+    return
+  }
+  // 查询该温室下的设备
+  const res = await AgricultureDeviceService.listDevice({ pastureId })
   if (res.code === 200) {
-    currentDevices.value = res.rows
+    currentDevices.value = res.rows || []
   } else {
     currentDevices.value = []
   }
-  // 这里可以继续做：把 pastureId, batchId, currentDevices 传递给子组件
-    console.log('选择大棚和分区:', val)
+  console.log('选择温室:', pastureId)
 }
 
 
 
 onMounted(async () => {
+  // 加载温室列表
+  await loadPastureOptions()
   // 查询所有设备（不分页，pageSize设大一点）
   const res = await AgricultureDeviceService.listDevice({ })
-  if (res.code === 200) {
-    // 统计每个大棚-分区下的设备数量
+  if (res.code === 200 && res.rows && res.rows.length > 0) {
+    // 统计每个温室下的设备数量
     const countMap = {}
     res.rows.forEach(device => {
-      const key = `${device.pastureId}-${device.batchId}`
-      countMap[key] = (countMap[key] || 0) + 1
+      if (device && device.pastureId) {
+        const key = String(device.pastureId)
+        countMap[key] = (countMap[key] || 0) + 1
+      }
     })
-    // 找出设备最多的分区
+    // 找出设备最多的温室
     let maxKey = null, maxCount = 0
     for (const key in countMap) {
       if (countMap[key] > maxCount) {
@@ -148,11 +132,10 @@ onMounted(async () => {
       }
     }
     if (maxKey) {
-      const [pastureId, batchId] = maxKey.split('-')
-      // 设置级联选择器的值
-      queryCascader.value = [pastureId, batchId]
-      // 查询该分区下的设备
-      await handleCascaderChange([pastureId, batchId])
+      // 设置温室选择器的值
+      queryPastureId.value = maxKey
+      // 查询该温室下的设备
+      await handlePastureChange(maxKey)
     }
   }
 })
