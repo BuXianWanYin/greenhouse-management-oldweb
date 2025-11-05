@@ -323,6 +323,7 @@ const weatherTrendData = ref(null) // 本地气象趋势数据
 const thresholdMap = ref({}) // 各设备阈值配置映射
 const cachedTrendData = ref(null) // 气象趋势数据缓存
 const paramTypeDict = ref({}) // 参数类型中英文对照字典
+const paramUnitDict = ref({}) // 参数类型单位字典 { paramTypeEn: unit }
 const deviceTopicMap = ref({}) // 设备ID到MQTT topic的映射 { deviceId: topic }
 // --- 预警相关 ---
 const userStore = useUserStore()
@@ -339,12 +340,10 @@ const handleForm = ref({
 })
 const isDetailMode = ref(false)
 
-const paramUnitMap = {  //单位映射
-  wind_speed: 'm/s',
-  humidity: '%',
-  temperature: '℃',
-  light_intensity: 'Lux',
-}
+// 从参数类型字典动态获取单位映射
+const paramUnitMap = computed(() => {
+  return paramUnitDict.value || {}
+})
 // --- 报警规则相关 ---
 const alarmRules = ref([]) // 报警规则列表
 let updateTimeTimer = null //定时器
@@ -467,7 +466,7 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'temperature',
       label: '空气温度',
       value: weatherData?.temperature ?? '--',
-      unit: '℃',
+      unit: paramUnitMap.value['temperature'] || '℃',
       range: getThresholdRange(weatherId, 'temperature'),
       percentage: (() => {
         const v = Number(weatherData?.temperature)
@@ -487,7 +486,7 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'humidity',
       label: '空气湿度',
       value: weatherData?.humidity ?? '--',
-      unit: '%',
+      unit: paramUnitMap.value['humidity'] || '%',
       range: getThresholdRange(weatherId, 'humidity'),
       percentage: (() => {
         const v = Number(weatherData?.humidity)
@@ -507,7 +506,7 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'lightIntensity',
       label: '光照强度',
       value: weatherData?.illuminance ?? '--',
-      unit: 'Lux',
+      unit: paramUnitMap.value['light_intensity'] || 'lux',
       range: getThresholdRange(weatherId, 'light_intensity'),
       percentage: (() => {
         const v = Number(weatherData?.illuminance)
@@ -1131,12 +1130,12 @@ function updateTrendChart(data) {
     return fixed
   }
 
-  // 参数映射
+  // 参数映射（从字典动态获取单位）
   const paramMap = {
-    temperature: { name: '空气温度', data: fixSeriesData(data.temperature, len), unit: '℃' },
-    humidity: { name: '空气湿度', data: fixSeriesData(data.humidity, len), unit: '%' },
-    windSpeed: { name: '风速', data: fixSeriesData(data.windSpeed, len), unit: 'm/s' },
-    lightIntensity: { name: '光照强度', data: fixSeriesData(data.lightIntensity, len), unit: 'Lux' }
+    temperature: { name: '空气温度', data: fixSeriesData(data.temperature, len), unit: paramUnitMap.value['temperature'] || '℃' },
+    humidity: { name: '空气湿度', data: fixSeriesData(data.humidity, len), unit: paramUnitMap.value['humidity'] || '%' },
+    windSpeed: { name: '风速', data: fixSeriesData(data.windSpeed, len), unit: paramUnitMap.value['wind_speed'] || 'm/s' },
+    lightIntensity: { name: '光照强度', data: fixSeriesData(data.lightIntensity, len), unit: paramUnitMap.value['light_intensity'] || 'lux' }
   }
 
   // 只保留选中的参数
@@ -1455,13 +1454,18 @@ const loadParamTypeDict = async () => {
   try {
     const res = await ParamTypeDictService.listDict({})
     if (res && res.rows && Array.isArray(res.rows)) {
+      // 加载中英文对照字典
       paramTypeDict.value = Object.fromEntries(
         res.rows.map(item => [item.paramTypeEn, item.paramTypeCn])
       )
-      
+      // 加载单位字典
+      paramUnitDict.value = Object.fromEntries(
+        res.rows.map(item => [item.paramTypeEn, item.unit || ''])
+      )
     }
   } catch (e) {
     paramTypeDict.value = {}
+    paramUnitDict.value = {}
   }
 }
 

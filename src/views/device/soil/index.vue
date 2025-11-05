@@ -275,6 +275,7 @@ const { deviceDataMap } = storeToRefs(mqttStore) // 解构出设备数据映射
 const thresholdMap = ref({}) // 各设备阈值配置映射
 const cachedTrendData = ref(null) // 土壤趋势数据缓存
 const paramTypeDict = ref({}) // 参数类型中英文对照字典
+const paramUnitDict = ref({}) // 参数类型单位字典 { paramTypeEn: unit }
 const deviceTopicMap = ref({}) // 设备ID到MQTT topic的映射 { deviceId: topic }
 // --- 预警相关 ---
 const userStore = useUserStore()
@@ -291,16 +292,10 @@ const handleForm = ref({
 })
 const isDetailMode = ref(false)
 
-const paramUnitMap = {  //单位映射
-  soil_temperature: '℃',
-  soil_humidity: 'm³/m³',
-  conductivity: 'µS/cm',
-  salinity: 'mg/L',
-  nitrogen: 'mg/kg',
-  phosphorus: 'mg/kg',
-  potassium: 'mg/kg',
-  ph_value: '',
-}
+// 从参数类型字典动态获取单位映射
+const paramUnitMap = computed(() => {
+  return paramUnitDict.value || {}
+})
 // --- 报警规则相关 ---
 const alarmRules = ref([]) // 报警规则列表
 let updateTimeTimer = null //定时器
@@ -411,7 +406,7 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'soilTemperature',
       label: '土壤温度',
       value: soilData?.soilTemperature ?? '--',
-      unit: '℃',
+      unit: paramUnitMap.value['soil_temperature'] || '℃',
       range: getThresholdRange(soilId, 'soil_temperature'),
       percentage: (() => {
         const v = Number(soilData?.soilTemperature)
@@ -431,7 +426,7 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'soilHumidity',
       label: '土壤湿度',
       value: soilData?.soilHumidity ?? '--',
-      unit: 'm³/m³',
+      unit: paramUnitMap.value['soil_humidity'] || '%',
       range: getThresholdRange(soilId, 'soil_humidity'),
       percentage: (() => {
         const v = Number(soilData?.soilHumidity)
@@ -451,16 +446,16 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'conductivity',
       label: '土壤电导率',
       value: soilData?.conductivity ?? '--',
-      unit: 'µS/cm',
-      range: getThresholdRange(soilId, 'conductivity'),
+      unit: paramUnitMap.value['soil_conductivity'] || 'μS/cm',
+      range: getThresholdRange(soilId, 'soil_conductivity'),
       percentage: (() => {
         const v = Number(soilData?.conductivity)
-        const config = getThresholdConfig(soilId, 'conductivity')
+        const config = getThresholdConfig(soilId, 'soil_conductivity')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
         const v = Number(soilData?.conductivity)
-        const config = getThresholdConfig(soilId, 'conductivity')
+        const config = getThresholdConfig(soilId, 'soil_conductivity')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Flag,
@@ -471,16 +466,16 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'phValue',
       label: '土壤pH值',
       value: soilData?.phValue ?? '--',
-      unit: '',
-      range: getThresholdRange(soilId, 'ph_value'),
+      unit: paramUnitMap.value['soil_ph'] || '',
+      range: getThresholdRange(soilId, 'soil_ph'),
       percentage: (() => {
         const v = Number(soilData?.phValue)
-        const config = getThresholdConfig(soilId, 'ph_value')
+        const config = getThresholdConfig(soilId, 'soil_ph')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
         const v = Number(soilData?.phValue)
-        const config = getThresholdConfig(soilId, 'ph_value')
+        const config = getThresholdConfig(soilId, 'soil_ph')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Sunny,
@@ -491,16 +486,16 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'salinity',
       label: '土壤盐分',
       value: soilData?.salinity ?? '--',
-      unit: 'mg/kg',
-      range: getThresholdRange(soilId, 'salinity'),
+      unit: paramUnitMap.value['soil_salinity'] || 'mg/L',
+      range: getThresholdRange(soilId, 'soil_salinity'),
       percentage: (() => {
         const v = Number(soilData?.salinity)
-        const config = getThresholdConfig(soilId, 'salinity')
+        const config = getThresholdConfig(soilId, 'soil_salinity')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
         const v = Number(soilData?.salinity)
-        const config = getThresholdConfig(soilId, 'salinity')
+        const config = getThresholdConfig(soilId, 'soil_salinity')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Flag,
@@ -511,16 +506,16 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'nitrogen',
       label: '土壤氮含量',
       value: soilData?.nitrogen ?? '--',
-      unit: 'mg/kg',
-      range: getThresholdRange(soilId, 'nitrogen'),
+      unit: paramUnitMap.value['soil_nitrogen'] || 'mg/kg',
+      range: getThresholdRange(soilId, 'soil_nitrogen'),
       percentage: (() => {
         const v = Number(soilData?.nitrogen)
-        const config = getThresholdConfig(soilId, 'nitrogen')
+        const config = getThresholdConfig(soilId, 'soil_nitrogen')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
         const v = Number(soilData?.nitrogen)
-        const config = getThresholdConfig(soilId, 'nitrogen')
+        const config = getThresholdConfig(soilId, 'soil_nitrogen')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Sunny,
@@ -531,16 +526,16 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'phosphorus',
       label: '土壤磷含量',
       value: soilData?.phosphorus ?? '--',
-      unit: 'mg/kg',
-      range: getThresholdRange(soilId, 'phosphorus'),
+      unit: paramUnitMap.value['soil_phosphorus'] || 'mg/kg',
+      range: getThresholdRange(soilId, 'soil_phosphorus'),
       percentage: (() => {
         const v = Number(soilData?.phosphorus)
-        const config = getThresholdConfig(soilId, 'phosphorus')
+        const config = getThresholdConfig(soilId, 'soil_phosphorus')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
         const v = Number(soilData?.phosphorus)
-        const config = getThresholdConfig(soilId, 'phosphorus')
+        const config = getThresholdConfig(soilId, 'soil_phosphorus')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Sunny,
@@ -551,16 +546,16 @@ const dateRange = ref([]) // 检测记录日期范围
       name: 'potassium',
       label: '土壤钾含量',
       value: soilData?.potassium ?? '--',
-      unit: 'mg/kg',
-      range: getThresholdRange(soilId, 'potassium'),
+      unit: paramUnitMap.value['soil_potassium'] || 'mg/kg',
+      range: getThresholdRange(soilId, 'soil_potassium'),
       percentage: (() => {
         const v = Number(soilData?.potassium)
-        const config = getThresholdConfig(soilId, 'potassium')
+        const config = getThresholdConfig(soilId, 'soil_potassium')
         return config ? calcPercentage(v, config.thresholdMin, config.thresholdMax) : 0
       })(),
       status: (() => {
         const v = Number(soilData?.potassium)
-        const config = getThresholdConfig(soilId, 'potassium')
+        const config = getThresholdConfig(soilId, 'soil_potassium')
         return config ? calcStatus(v, config.thresholdMin, config.thresholdMax) : { type: 'info', text: '无数据', color: '#909399' }
       })(),
       icon: Sunny,
@@ -1077,16 +1072,16 @@ function updateTrendChart(data) {
     return fixed
   }
 
-  // 参数映射（包含8个土壤参数）
+  // 参数映射（包含8个土壤参数，从字典动态获取单位）
   const paramMap = {
-    soilTemperature: { name: '土壤温度', data: fixSeriesData(data.soilTemperature, len), unit: '℃' },
-    soilHumidity: { name: '土壤湿度', data: fixSeriesData(data.soilHumidity, len), unit: 'm³/m³' },
-    conductivity: { name: '土壤电导率', data: fixSeriesData(data.conductivity, len), unit: 'µS/cm' },
-    phValue: { name: '土壤pH值', data: fixSeriesData(data.phValue, len), unit: '' },
-    salinity: { name: '土壤盐分', data: fixSeriesData(data.salinity, len), unit: 'mg/kg' },
-    nitrogen: { name: '土壤氮含量', data: fixSeriesData(data.nitrogen, len), unit: 'mg/kg' },
-    phosphorus: { name: '土壤磷含量', data: fixSeriesData(data.phosphorus, len), unit: 'mg/kg' },
-    potassium: { name: '土壤钾含量', data: fixSeriesData(data.potassium, len), unit: 'mg/kg' }
+    soilTemperature: { name: '土壤温度', data: fixSeriesData(data.soilTemperature, len), unit: paramUnitMap.value['soil_temperature'] || '℃' },
+    soilHumidity: { name: '土壤湿度', data: fixSeriesData(data.soilHumidity, len), unit: paramUnitMap.value['soil_humidity'] || '%' },
+    conductivity: { name: '土壤电导率', data: fixSeriesData(data.conductivity, len), unit: paramUnitMap.value['soil_conductivity'] || 'μS/cm' },
+    phValue: { name: '土壤pH值', data: fixSeriesData(data.phValue, len), unit: paramUnitMap.value['soil_ph'] || '' },
+    salinity: { name: '土壤盐分', data: fixSeriesData(data.salinity, len), unit: paramUnitMap.value['soil_salinity'] || 'mg/L' },
+    nitrogen: { name: '土壤氮含量', data: fixSeriesData(data.nitrogen, len), unit: paramUnitMap.value['soil_nitrogen'] || 'mg/kg' },
+    phosphorus: { name: '土壤磷含量', data: fixSeriesData(data.phosphorus, len), unit: paramUnitMap.value['soil_phosphorus'] || 'mg/kg' },
+    potassium: { name: '土壤钾含量', data: fixSeriesData(data.potassium, len), unit: paramUnitMap.value['soil_potassium'] || 'mg/kg' }
   }
 
   // 只保留选中的参数
@@ -1347,13 +1342,18 @@ const loadParamTypeDict = async () => {
   try {
     const res = await ParamTypeDictService.listDict({})
     if (res && res.rows && Array.isArray(res.rows)) {
+      // 加载中英文对照字典
       paramTypeDict.value = Object.fromEntries(
         res.rows.map(item => [item.paramTypeEn, item.paramTypeCn])
       )
-      
+      // 加载单位字典
+      paramUnitDict.value = Object.fromEntries(
+        res.rows.map(item => [item.paramTypeEn, item.unit || ''])
+      )
     }
   } catch (e) {
     paramTypeDict.value = {}
+    paramUnitDict.value = {}
   }
 }
 
