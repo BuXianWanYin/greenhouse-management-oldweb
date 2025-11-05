@@ -4,6 +4,7 @@ import {
   AgricultureSoilDataListPageResult
 } from '@/types/sensor/soildata'
 import { CodeMsgResult } from '@/types/axios'
+import { tansParams } from '@/utils/utils'
 
 // 土壤8参数传感器数据
 export class AgricultureSoilDataService {
@@ -48,12 +49,12 @@ export class AgricultureSoilDataService {
   // 导出土壤8参数传感器数据列表
   static exportExcel(data: any) {
     return request.post({
-      url: 'server/data/export',
+      url: '/device/soildata/export',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       responseType: 'blob',
-      data: data
+      data: typeof data === 'string' ? data : tansParams(data)
     })
   }
 

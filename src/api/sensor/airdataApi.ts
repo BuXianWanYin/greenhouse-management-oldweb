@@ -1,6 +1,7 @@
 import request from '@/utils/http'
 import { AgricultureAirDataInfoResult,AgricultureAirDataListPageResult } from '@/types/sensor/airdata'
 import { CodeMsgResult } from '@/types/axios'
+import { tansParams } from '@/utils/utils'
 
 // 温度湿度光照传感器数据
 export class AgricultureAirDataService {
@@ -45,12 +46,12 @@ export class AgricultureAirDataService {
     // 导出温度湿度光照传感器数据列表
     static exportExcel(data: any) {
         return request.post({
-            url: 'server/data/export',
+            url: '/device/airdata/export',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
             responseType: 'blob',
-            data: data
+            data: typeof data === 'string' ? data : tansParams(data)
         })
     }
 

@@ -167,7 +167,7 @@ import { Search, Refresh, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { AgricultureAirDataService } from '@/api/sensor/airdataApi'
 import { AgricultureSoilDataService } from '@/api/sensor/soilDataApi'
-import { parseTime } from '@/utils/utils'
+import { parseTime, downloadExcel, tansParams } from '@/utils/utils'
 
 // 父组件传递的参数
 const props = defineProps({
@@ -354,6 +354,12 @@ const resetQuery = () => {
 
 // 导出数据
 const handleExport = async () => {
+  // 检查是否有温室ID
+  if (!props.pastureId && !baseQueryParams.value.pastureId) {
+    ElMessage.warning('请先选择温室')
+    return
+  }
+  
   const currentData = activeTab.value === 'weather' ? weatherData.value : soilData.value
   if (currentData.length === 0) {
     ElMessage.warning('没有数据可导出')
@@ -362,19 +368,40 @@ const handleExport = async () => {
   
   exportLoading.value = true
   try {
-    const params = getBaseParams()
-    
-    if (activeTab.value === 'weather') {
-      await AgricultureAirDataService.exportExcel(params)
-    } else {
-      await AgricultureSoilDataService.exportExcel(params)
+    // 构建导出参数，确保包含所有必要的查询条件
+    const params = {
+      pastureId: baseQueryParams.value.pastureId || props.pastureId || ''
     }
     
-    ElMessage.success('导出成功')
+    // 只有在有值时才添加设备ID
+    if (baseQueryParams.value.deviceId) {
+      params.deviceId = baseQueryParams.value.deviceId
+    }
+    
+    // 处理日期范围
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.beginTime = dateRange.value[0]
+      params.endTime = dateRange.value[1]
+    }
+    
+    // 生成文件名
+    const dataTypeName = activeTab.value === 'weather' ? '气象数据' : '土壤数据'
+    const now = new Date()
+    const fileName = `${dataTypeName}_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+    
+    console.log('导出参数:', params) // 调试用
+    
+    // 使用downloadExcel工具函数处理导出
+    if (activeTab.value === 'weather') {
+      await downloadExcel(AgricultureAirDataService.exportExcel(params), fileName)
+    } else {
+      await downloadExcel(AgricultureSoilDataService.exportExcel(params), fileName)
+    }
+    
+    exportLoading.value = false
   } catch (error) {
     console.error('导出失败:', error)
-    ElMessage.error('导出失败')
-  } finally {
+    ElMessage.error('导出失败，请检查网络连接或联系管理员')
     exportLoading.value = false
   }
 }
