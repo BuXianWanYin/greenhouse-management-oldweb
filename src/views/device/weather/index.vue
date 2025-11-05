@@ -30,6 +30,14 @@
           <div class="card-header">
             <span>气象参数历史趋势</span>
             <div class="header-right">
+              <div class="view-mode-wrapper">
+                <span class="view-mode-label">视图模式</span>
+                <el-select v-model="chartViewMode" size="small" style="width: 82px" placeholder="视图模式">
+                  <el-option label="双Y轴" value="dualYAxis" />
+                  <el-option label="分组显示" value="split" />
+                  <el-option label="归一化" value="normalized" />
+                </el-select>
+              </div>
               <el-select v-model="selectedParams" multiple size="small" style="width: 260px" placeholder="选择参数">
                 <el-option
                   v-for="item in monitorParams"
@@ -325,6 +333,7 @@ const fetchWarningList = async () => {
 // --- 图表相关 ---
 const chartTimeRange = ref('day') // 趋势图时间范围
 const selectedParams = ref(['temperature', 'humidity', 'lightIntensity']) // 选中的气象参数
+const chartViewMode = ref('dualYAxis') // 图表视图模式：dualYAxis(双Y轴) | split(分组显示) | normalized(归一化)
 const trendChart = ref(null) // 趋势图 DOM 引用
 let chartInstance = null // ECharts 实例
 const chartOption = ref({}) // 图表 option 配置
@@ -587,10 +596,10 @@ watch(handleDialogVisible, (visible) => {
   }
 })
 /**
- * 侦听 chartTimeRange 和 selectedParams 的变化
+ * 侦听 chartTimeRange、selectedParams 和 chartViewMode 的变化
  * 变化时刷新气象趋势图
  */
-watch([chartTimeRange, selectedParams], () => {
+watch([chartTimeRange, selectedParams, chartViewMode], () => {
   fetchWeatherTrendData()
 })
 
@@ -1019,48 +1028,301 @@ function updateTrendChart(data) {
   // 只保留选中的参数，过滤掉不存在的数据
   const validParams = selectedParams.value.filter(key => paramMap[key])
   const legendData = validParams.map(key => paramMap[key].name)
-  const series = validParams.map(key => ({
-    name: paramMap[key].name,
-    type: 'line',
-    data: paramMap[key].data
-  }))
+  
+  // 根据视图模式生成不同的配置
+  const viewMode = chartViewMode.value || 'dualYAxis'
+  const isWeek = chartTimeRange.value === 'week'
+  
+  let option = {}
 
-  const isWeek = chartTimeRange.value === 'week';
+  if (viewMode === 'normalized') {
+    // 归一化模式：将每个参数的值转换为相对于其最大值的百分比 (0-100%)
+    const normalizedSeries = validParams.map(key => {
+      const originalData = paramMap[key].data
+      const maxValue = Math.max(...originalData.filter(v => !isNaN(v) && v != null), 1)
+      const normalizedData = originalData.map(v => {
+        if (v == null || isNaN(v)) return 0
+        return Math.round((v / maxValue) * 100 * 10) / 10 // 保留一位小数
+      })
+      
+      return {
+        name: paramMap[key].name,
+        type: 'line',
+        data: normalizedData,
+        tooltip: {
+          valueFormatter: (value) => {
+            const index = normalizedData.indexOf(value)
+            const originalValue = originalData[index]
+            return `${value}% (原始值: ${originalValue}${paramMap[key].unit})`
+          }
+        }
+      }
+    })
 
-  const option = {
-    grid: {
-      left: isWeek ? '5%' : '2%',
-      right: isWeek ? '3%' : '2%',
-      top: 60,
-      bottom: 40,
-      containLabel: true
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: function(params) {
-        let html = params[0].axisValue + '<br/>';
-        params.forEach(item => {
-          // 找到 unit
-          let unit = ''
-          for (const k in paramMap) {
-            if (paramMap[k].name === item.seriesName) {
-              unit = paramMap[k].unit
-              break
+    option = {
+      grid: {
+        left: isWeek ? '5%' : '2%',
+        right: isWeek ? '3%' : '2%',
+        top: 60,
+        bottom: 40,
+        containLabel: true
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: function(params) {
+          let html = params[0].axisValue + '<br/>';
+          params.forEach(item => {
+            const key = validParams[legendData.indexOf(item.seriesName)]
+            const originalData = paramMap[key].data
+            const index = item.dataIndex
+            const originalValue = originalData[index]
+            const unit = paramMap[key].unit
+            html += `${item.marker}${item.seriesName} <b>${item.data}%</b> (原始值: ${originalValue}${unit})<br/>`;
+          });
+          return html;
+        }
+      },
+      legend: { data: legendData },
+      xAxis: {
+        type: 'category',
+        data: xAxisData,
+        boundaryGap: false
+      },
+      yAxis: {
+        type: 'value',
+        name: '相对值 (%)',
+        min: 0,
+        max: 100,
+        axisLabel: {
+          formatter: '{value}%'
+        }
+      },
+      series: normalizedSeries
+    }
+  } else if (viewMode === 'split') {
+    // 分组显示模式：将不同量级的数据分成两个图表区域
+    const hasLightIntensity = validParams.includes('lightIntensity')
+    const otherParams = validParams.filter(key => key !== 'lightIntensity')
+    
+    if (hasLightIntensity && otherParams.length > 0) {
+      // 分成两个区域：上方显示其他参数，下方显示光照强度
+      const upperSeries = otherParams.map(key => ({
+        name: paramMap[key].name,
+        type: 'line',
+        data: paramMap[key].data,
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      }))
+      
+      const lowerSeries = [{
+        name: paramMap['lightIntensity'].name,
+        type: 'line',
+        data: paramMap['lightIntensity'].data,
+        xAxisIndex: 1,
+        yAxisIndex: 1
+      }]
+
+      option = {
+        grid: [
+          { // 上方图表区域
+            left: isWeek ? '5%' : '2%',
+            right: isWeek ? '3%' : '2%',
+            top: 60,
+            bottom: '55%',
+            containLabel: true
+          },
+          { // 下方图表区域
+            left: isWeek ? '5%' : '2%',
+            right: isWeek ? '3%' : '2%',
+            top: '60%',
+            bottom: 40,
+            containLabel: true
+          }
+        ],
+        tooltip: {
+          trigger: 'axis',
+          formatter: function(params) {
+            let html = params[0].axisValue + '<br/>';
+            params.forEach(item => {
+              let unit = ''
+              for (const k in paramMap) {
+                if (paramMap[k].name === item.seriesName) {
+                  unit = paramMap[k].unit
+                  break
+                }
+              }
+              html += `${item.marker}${item.seriesName} <b>${item.data}${unit}</b><br/>`;
+            });
+            return html;
+          }
+        },
+        legend: { 
+          data: legendData,
+          top: 10
+        },
+        xAxis: [
+          {
+            type: 'category',
+            data: xAxisData,
+            boundaryGap: false,
+            gridIndex: 0,
+            axisLabel: { show: false }
+          },
+          {
+            type: 'category',
+            data: xAxisData,
+            boundaryGap: false,
+            gridIndex: 1
+          }
+        ],
+        yAxis: [
+          {
+            type: 'value',
+            gridIndex: 0,
+            name: '温度/湿度',
+            axisLabel: {
+              formatter: '{value}'
+            }
+          },
+          {
+            type: 'value',
+            gridIndex: 1,
+            name: '光照强度',
+            axisLabel: {
+              formatter: '{value}'
             }
           }
-          html += `${item.marker}${item.seriesName} <b>${item.data}${unit}</b><br/>`;
-        });
-        return html;
+        ],
+        series: [...upperSeries, ...lowerSeries]
       }
-    },
-    legend: { data: legendData },
-    xAxis: {
-      type: 'category',
-      data: xAxisData,
-      boundaryGap: false
-    },
-    yAxis: { type: 'value' },
-    series
+    } else {
+      // 如果只有一类参数，使用单图表显示
+      const series = validParams.map(key => ({
+        name: paramMap[key].name,
+        type: 'line',
+        data: paramMap[key].data
+      }))
+
+      option = {
+        grid: {
+          left: isWeek ? '5%' : '2%',
+          right: isWeek ? '3%' : '2%',
+          top: 60,
+          bottom: 40,
+          containLabel: true
+        },
+        tooltip: {
+          trigger: 'axis',
+          formatter: function(params) {
+            let html = params[0].axisValue + '<br/>';
+            params.forEach(item => {
+              let unit = ''
+              for (const k in paramMap) {
+                if (paramMap[k].name === item.seriesName) {
+                  unit = paramMap[k].unit
+                  break
+                }
+              }
+              html += `${item.marker}${item.seriesName} <b>${item.data}${unit}</b><br/>`;
+            });
+            return html;
+          }
+        },
+        legend: { data: legendData },
+        xAxis: {
+          type: 'category',
+          data: xAxisData,
+          boundaryGap: false
+        },
+        yAxis: { type: 'value' },
+        series
+      }
+    }
+  } else {
+    // 双Y轴模式（默认）
+    const hasLightIntensity = validParams.includes('lightIntensity')
+    const hasOtherParams = validParams.some(key => key !== 'lightIntensity')
+    const useDualYAxis = hasLightIntensity && hasOtherParams
+
+    // 构建系列数据，为光照强度指定右侧Y轴
+    const series = validParams.map(key => {
+      const seriesItem = {
+        name: paramMap[key].name,
+        type: 'line',
+        data: paramMap[key].data
+      }
+      // 如果使用双Y轴，光照强度使用右侧Y轴（yAxisIndex: 1），其他参数使用左侧Y轴（yAxisIndex: 0）
+      if (useDualYAxis) {
+        seriesItem.yAxisIndex = key === 'lightIntensity' ? 1 : 0
+      }
+      return seriesItem
+    })
+
+    // 构建Y轴配置
+    let yAxisConfig
+    if (useDualYAxis) {
+      // 双Y轴配置
+      yAxisConfig = [
+        {
+          type: 'value',
+          name: '温度/湿度',
+          position: 'left',
+          axisLabel: {
+            formatter: '{value}'
+          }
+        },
+        {
+          type: 'value',
+          name: '光照强度',
+          position: 'right',
+          axisLabel: {
+            formatter: '{value}'
+          },
+          splitLine: {
+            show: false // 右侧Y轴不显示分割线，避免视觉混乱
+          }
+        }
+      ]
+    } else {
+      // 单Y轴配置
+      yAxisConfig = { type: 'value' }
+    }
+
+    option = {
+      grid: {
+        left: useDualYAxis ? (isWeek ? '8%' : '5%') : (isWeek ? '5%' : '2%'),
+        right: useDualYAxis ? (isWeek ? '8%' : '5%') : (isWeek ? '3%' : '2%'),
+        top: 60,
+        bottom: 40,
+        containLabel: true
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: function(params) {
+          let html = params[0].axisValue + '<br/>';
+          params.forEach(item => {
+            // 找到 unit
+            let unit = ''
+            for (const k in paramMap) {
+              if (paramMap[k].name === item.seriesName) {
+                unit = paramMap[k].unit
+                break
+              }
+            }
+            html += `${item.marker}${item.seriesName} <b>${item.data}${unit}</b><br/>`;
+          });
+          return html;
+        }
+      },
+      legend: { data: legendData },
+      xAxis: {
+        type: 'category',
+        data: xAxisData,
+        boundaryGap: false
+      },
+      yAxis: yAxisConfig,
+      series
+    }
   }
 
   if (chartInstance) {
@@ -1481,6 +1743,68 @@ onBeforeUnmount(() => {
     .header-right {
       display: flex;
       gap: 10px;
+      align-items: center;
+      
+      .view-mode-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        .view-mode-label {
+          font-size: 14px;
+          color: #606266;
+          white-space: nowrap;
+        }
+      }
+      
+      // 统一所有select和radio-group的高度为32px
+      :deep(.el-select) {
+        height: 32px !important;
+        
+        .el-input__wrapper,
+        .el-select__wrapper {
+          height: 32px !important;
+          min-height: 32px !important;
+          max-height: 32px !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          box-sizing: border-box;
+        }
+        
+        // multiple模式下的标签容器
+        .el-select__tags {
+          height: 30px !important;
+          line-height: 30px !important;
+          padding: 0 8px !important;
+          
+          .el-tag {
+            height: 22px !important;
+            line-height: 20px !important;
+            margin: 0 4px 0 0 !important;
+            box-sizing: border-box;
+          }
+        }
+        
+        input {
+          height: 30px !important;
+          line-height: 30px !important;
+        }
+      }
+      
+      :deep(.el-radio-group) {
+        height: 32px;
+        
+        .el-radio-button {
+          height: 32px;
+          
+          .el-radio-button__inner {
+            height: 32px !important;
+            line-height: 30px !important;
+            padding: 0 15px !important;
+            box-sizing: border-box;
+          }
+        }
+      }
     }
   }
   

@@ -152,9 +152,6 @@
             <el-option v-for="item in deviceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="传感器指令" prop="sensorCommand">
-          <el-input v-model="form.sensorCommand" placeholder="请输入传感器采集指令" />
-        </el-form-item>
       </el-form>
       <el-form v-else ref="cameraRef" :model="cameraForm" :rules="cameraRules" label-width="80px">
         <el-form-item label="用户名" prop="username">
