@@ -130,7 +130,7 @@
   import { Location, DataLine, EditPen } from '@element-plus/icons-vue' // 导入图标组件
   // 导入图片
   import pastureImage from '@/assets/img/pasture/ycgs.jpeg'
-  import { AgricultureCropBatchService } from '@/api/agriculture/batchApi'
+  import { AgricultureCropBatchService } from '@/api/agriculture/cropBatchApi'
 
   const pastureList = ref<AgriculturePastureResult[]>([])
   const open = ref(false);

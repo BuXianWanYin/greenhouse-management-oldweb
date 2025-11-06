@@ -2,8 +2,8 @@
   <div class="page-content">
     <!-- 搜索栏开始 -->
     <el-form :model="queryParams" ref="queryRef" label-width="100px">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :lg="6">
+      <el-row :gutter="20" class="search-row">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="轮作名称" prop="rotationName">
             <el-input placeholder="请输入轮作名称" v-model="queryParams.rotationName" @keyup.enter="handleQuery">
               <template #prefix>
@@ -12,7 +12,7 @@
             </el-input>
           </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="计划年份" prop="planYear">
             <el-date-picker
               v-model="queryParams.planYear"
@@ -24,7 +24,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="轮作状态" prop="rotationStatus">
             <el-select v-model="queryParams.rotationStatus" placeholder="请选择状态" clearable style="width: 100%">
               <el-option label="进行中" value="0" />
@@ -33,20 +33,21 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <div style="width: 12px"></div>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-button @click="handleQuery" v-ripple>
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="resetForm(queryRef)" v-ripple>
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-          <el-button @click="handleAdd" v-auth="['agriculture:rotationplan:add']" v-ripple>
-            <el-icon><Plus /></el-icon>新增
-          </el-button>
-          <el-button @click="handleExport" v-auth="['agriculture:rotationplan:export']" v-ripple>
-            <el-icon><Download /></el-icon>导出
-          </el-button>
+        <el-col :xs="24" :sm="24" :md="24" :lg="9" :xl="12" class="button-col">
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery" v-ripple>
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button type="info" @click="resetForm(queryRef)" v-ripple>
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+            <el-button type="success" @click="handleAdd" v-auth="['agriculture:rotationplan:add']" v-ripple>
+              <el-icon><Plus /></el-icon>新增
+            </el-button>
+            <el-button type="warning" @click="handleExport" v-auth="['agriculture:rotationplan:export']" v-ripple>
+              <el-icon><Download /></el-icon>导出
+            </el-button>
+          </el-form-item>
         </el-col>
       </el-row>
     </el-form>
@@ -69,8 +70,11 @@
       </el-table-column>
       <el-table-column label="轮作描述" prop="rotationDescription" min-width="200" show-overflow-tooltip />
       <el-table-column label="创建时间" prop="createTime" width="180" align="center" />
-      <el-table-column label="操作" width="200" align="center" fixed="right">
+      <el-table-column label="操作" width="250" align="center" fixed="right">
         <template #default="scope">
+          <el-button link type="primary" @click="handleDetail(scope.row)" v-auth="['agriculture:rotationplan:query']">
+            <el-icon><View /></el-icon>详情
+          </el-button>
           <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:rotationplan:edit']">
             <el-icon><EditPen /></el-icon>修改
           </el-button>
@@ -82,7 +86,7 @@
     </el-table>
 
     <el-pagination
-      v-if="total > queryParams.pageSize"
+      v-if="total > 0"
       background
       layout="total, sizes, prev, pager, next, jumper"
       :total="total"
@@ -138,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { Search, Refresh, Plus, Download, Document, EditPen, Delete } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Download, Document, EditPen, Delete, View } from '@element-plus/icons-vue'
 import { AgricultureRotationPlanService } from '@/api/agriculture/rotationPlanApi'
 import { ref, reactive, onMounted } from 'vue'
 import { resetForm } from '@/utils/utils'
@@ -146,7 +150,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { FormInstance } from 'element-plus'
 import { AgricultureRotationPlanResult } from '@/types/agriculture/rotationPlan'
 import { downloadExcel } from '@/utils/utils'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const planList = ref<AgricultureRotationPlanResult[]>([])
 const open = ref(false)
 const loading = ref(true)
@@ -190,10 +196,25 @@ const rules = reactive({
 /** 查询轮作计划列表 */
 const getList = async () => {
   loading.value = true
-  const res = await AgricultureRotationPlanService.listPlan(queryParams)
-  if (res.code === 200) {
-    planList.value = res.rows
-    total.value = res.total
+  try {
+    const res = await AgricultureRotationPlanService.listPlan(queryParams)
+    if (res.code === 200) {
+      planList.value = res.rows || []
+      total.value = res.total || 0
+      // 调试信息：检查返回的数据
+      console.log('查询结果:', {
+        total: res.total,
+        rows: res.rows?.length,
+        pageNum: queryParams.pageNum,
+        pageSize: queryParams.pageSize
+      })
+    } else {
+      ElMessage.error(res.msg || '查询失败')
+    }
+  } catch (error) {
+    console.error('查询轮作计划列表失败:', error)
+    ElMessage.error('查询失败')
+  } finally {
     loading.value = false
   }
 }
@@ -223,6 +244,14 @@ const handleAdd = () => {
   title.value = '添加轮作计划'
 }
 
+/** 详情按钮操作 */
+const handleDetail = (row: AgricultureRotationPlanResult) => {
+  router.push({
+    path: '/agriculture/plan/rotationPlan/detail',
+    query: { rotationId: row.rotationId }
+  })
+}
+
 /** 修改按钮操作 */
 const handleUpdate = async (row: AgricultureRotationPlanResult) => {
   reset()
@@ -247,7 +276,12 @@ const submitForm = async () => {
           getList()
         }
       } else {
-        const res = await AgricultureRotationPlanService.addPlan(form)
+        // 新增时设置 delFlag = 0
+        const addData = {
+          ...form,
+          delFlag: '0'
+        }
+        const res = await AgricultureRotationPlanService.addPlan(addData)
         if (res.code === 200) {
           ElMessage.success(res.msg)
           open.value = false
@@ -300,6 +334,21 @@ onMounted(() => {
 <style lang="scss" scoped>
 .page-content {
   padding: 20px;
+}
+
+.search-row {
+  .button-col {
+    :deep(.el-form-item) {
+      margin-bottom: 0;
+      
+      .el-form-item__content {
+        display: flex;
+        gap: 10px;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+      }
+    }
+  }
 }
 </style>
 

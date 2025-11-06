@@ -1,9 +1,12 @@
 import request from '@/utils/http'
+
 import { AgricultureCropBatchTaskInfoResult, AgricultureCropBatchTaskListPageResult } from '@/types/agriculture/batchTask'
+
 import { CodeMsgResult } from '@/types/axios'
 
 // 批次任务
 export class AgricultureCropBatchTaskService {
+
     // 查询批次任务列表
     static listBatchTask(query: any) {
         return request.get<AgricultureCropBatchTaskListPageResult>({
@@ -39,6 +42,13 @@ export class AgricultureCropBatchTaskService {
     static delBatchTask(taskId: string) {
         return request.del<AgricultureCropBatchTaskListPageResult>({
             url: '/agriculture/batchTask/' + taskId
+        })
+    }
+
+    // 根据批次ID查询批次任务列表
+    static listBatchTaskByBatchId(batchId: number | string) {
+        return request.get<AgricultureCropBatchTaskInfoResult[]>({
+            url: `/agriculture/batchTask/batch/${batchId}`
         })
     }
 }

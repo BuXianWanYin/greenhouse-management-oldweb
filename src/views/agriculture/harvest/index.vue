@@ -133,11 +133,6 @@
                     <span>{{ item.cropArea }}亩</span>
                   </div>
                   <div class="info-item">
-                    <el-icon><FullScreen /></el-icon>
-                    <span class="label">养殖面积：</span>
-                    <span>{{ item.fishArea }}亩</span>
-                  </div>
-                  <div class="info-item">
                     <el-icon><Calendar /></el-icon>
                     <span class="label">开始时间：</span>
                     <span>{{ parseTime(item.createTime, '{y}-{m}-{d}') }}</span>
@@ -148,7 +143,7 @@
                 <el-button
                   size="small"
                   type="primary"
-                  @click="openHarvestDialog(item.batchId, item.fishDone, item.vegDone, item.hasHarvestRecord)"
+                  @click="openHarvestDialog(item.batchId, item.vegDone, item.hasHarvestRecord)"
                 >
                   {{ item.hasHarvestRecord ? '采摘详情' : '采摘' }}
                 </el-button>
@@ -204,7 +199,7 @@
           type="success"
           size="small"
           plain
-          @click="addProcess('Add', currentBatchId ?? undefined, currentGermplasmId ?? undefined, currentVegetableId ?? undefined)"
+          @click="addProcess('Add', currentBatchId ?? undefined, currentVegetableId ?? undefined)"
         >新增</el-button>
       </div>
       <div class="harvest-card-grid">
@@ -250,12 +245,6 @@
                         <span class="label">蔬菜重量:</span>
                         <span>{{ item.cuisineWeight }}kg</span>
                       </div>
-                      <!-- 只在有鱼类重量时显示 -->
-                      <div class="info-item" v-if="item.fishWeight">
-                        <i class="el-icon-shopping-cart-full"></i>
-                        <span class="label">鱼类重量:</span>
-                        <span>{{ item.fishWeight }}kg</span>
-                      </div>
                     </div>
                     <div class="info-row">
                       <div class="info-item">
@@ -294,22 +283,10 @@
             <el-option v-for="opt in foodNameOptions" :key="opt" :label="opt" :value="opt" />
           </el-select>
         </el-form-item>
-        <!-- 鱼类相关，仅有鱼类时或都有时显示 -->
-        <el-form-item v-if="isFish" label="鱼类重量" prop="fishWeight">
-          <el-input v-model="addForm.fishWeight" type="number" style="width: 80%" />
-          <span style="margin-left: 8px">kg</span>
-        </el-form-item>
-        <!-- 蔬菜相关，仅有蔬菜时或都有时显示 -->
+        <!-- 蔬菜相关 -->
         <el-form-item v-if="isVegetable" label="蔬菜重量" prop="cuisineWeight">
           <el-input v-model="addForm.cuisineWeight" type="number" style="width: 80%" />
           <span style="margin-left: 8px">kg</span>
-        </el-form-item>
-        <el-form-item v-if="isFish" label="鱼类质量" prop="fishStatus">
-          <el-select v-model="addForm.fishStatus" placeholder="请选择">
-            <el-option label="不合格" value="0" />
-            <el-option label="合格" value="1" />
-            <el-option label="优秀" value="2" />
-          </el-select>
         </el-form-item>
         <el-form-item v-if="isVegetable" label="蔬菜质量" prop="cuisineStatus">
           <el-select v-model="addForm.cuisineStatus" placeholder="请选择">
@@ -342,11 +319,11 @@
   import { ref, reactive, onMounted, watch, computed } from 'vue'
   import { ElMessage } from 'element-plus'
   import { AgricultureClassService } from '@/api/agriculture/classApi'
-  import { AgricultureCropBatchService } from '@/api/agriculture/batchApi'
+  import { AgricultureCropBatchService } from '@/api/agriculture/cropBatchApi'
   import { UserService } from '@/api/system/userApi'
   import Task from '../batch/Task.vue'
   import { partitionFoodService } from '@/api/agriculture/partitionFoodApi'
-  import { AgricultureCropBatchTaskService } from '@/api/agriculture/batchTaskApi'
+  import { AgricultureCropBatchTaskService } from '@/api/agriculture/cropBatchTaskApi'
   import {
     Search,
     Refresh,
@@ -402,8 +379,7 @@
     open: false,
     title: '',
     batchId: undefined as number | undefined,
-    fishDone: false, // 新增：标记鱼类任务是否完成
-    vegDone: false, // 新增：标记蔬菜任务是否完成
+    vegDone: false, // 标记蔬菜任务是否完成
     hasHarvestRecord:''
   })
 
@@ -420,26 +396,21 @@
     weight: '',
     date: '',
     cuisineStatus: '',
-    fishStatus: '',
     description: '',
     iaPartitionId: '',
-    cuisineWeight: '',
-    fishWeight: ''
+    cuisineWeight: ''
   })
-  // 新增：食品名称可选项
+  // 食品名称可选项
   const foodNameOptions = ref<string[]>([])
-  const addFormRules = {
+  const addFormRules: any = {
     name: [{ required: true, type: 'array', min: 1, message: '请选择食品名称', trigger: ['blur', 'change'] }],
     cuisineWeight: [{ required: true, message: '请输入蔬菜重量', trigger: ['blur', 'change'] }],
-    fishWeight: [{ required: true, message: '请输入鱼类重量', trigger: ['blur', 'change'] }],
     date: [{ required: true, message: '请选择日期', trigger: ['blur', 'change'] }],
-    cuisineStatus: [{ required: true, message: '请选择蔬菜食品质量', trigger: ['blur', 'change'] }],
-    fishStatus: [{ required: true, message: '请选择鱼类食品质量', trigger: ['blur', 'change'] }]
+    cuisineStatus: [{ required: true, message: '请选择蔬菜食品质量', trigger: ['blur', 'change'] }]
     // description: [{ required: true, message: '请输入备注信息', trigger: ['blur', 'change'] }]
   }
   const addFormRef = ref()
   const currentBatchId = ref<string | number | null>(null)
-  const currentGermplasmId = ref<number | null>(null)
   const currentVegetableId = ref<number | null>(null)
 
   const statusDict: { [key: string]: string } = {
@@ -461,12 +432,6 @@
     // 当前分区下已采摘的种质名
     const pickedNames = processData.value.map((item: any) => item.name)
     const options: string[] = []
-    if (batchTask.fishDone && currentGermplasmId.value) {
-      const fishClass = germplasmList.value.find((c: any) => c.classId == currentGermplasmId.value)
-      if (fishClass && !pickedNames.includes(fishClass.className)) {
-        options.push(fishClass.className)
-      }
-    }
     if (batchTask.vegDone && currentVegetableId.value) {
       const vegClass = germplasmList.value.find((c: any) => c.classId == currentVegetableId.value)
       if (vegClass && !pickedNames.includes(vegClass.className)) {
@@ -479,18 +444,11 @@
   function addProcess(
     title: string,
     iaPartitionId?: string | number | null,
-    germplasmId?: number,
     vegetableId?: number
   ) {
     // 当前分区下已采摘的种质名
     const pickedNames = processData.value.map((item: any) => item.name)
     const options: string[] = []
-    if (germplasmId && batchTask.fishDone) {
-      const fishClass = germplasmList.value.find((c: any) => c.classId == germplasmId)
-      if (fishClass && !pickedNames.includes(fishClass.className)) {
-        options.push(fishClass.className)
-      }
-    }
     if (vegetableId && batchTask.vegDone) {
       const vegClass = germplasmList.value.find((c: any) => c.classId == vegetableId)
       if (vegClass && !pickedNames.includes(vegClass.className)) {
@@ -501,7 +459,6 @@
     Object.assign(addForm, {
       name: options,
       cuisineWeight: '',
-      fishWeight: '',
       date: '',
       description: '',
       iaPartitionId: iaPartitionId ? String(iaPartitionId) : ''
@@ -511,9 +468,6 @@
 
   const handleAddSave = () => {
     let fields = ['name', 'date', 'description']
-    if (isFish.value) {
-      fields.push('fishWeight', 'fishStatus')
-    }
     if (isVegetable.value) {
       fields.push('cuisineWeight', 'cuisineStatus')
     }
@@ -530,21 +484,7 @@
         for (const name of formData.name) {
           const classObj = germplasmList.value.find((c: any) => c.className === name)
           if (!classObj) continue
-          if (classObj.type === 'fish') {
-            addList.push({
-              iaPartitionId: formData.iaPartitionId,
-              cuisineWeight: '', // 鱼类不填蔬菜重量
-              fishWeight: formData.fishWeight,
-              weight: formData.fishWeight,
-              name,
-              date: formData.date,
-              description: formData.description,
-              status: formData.fishStatus,
-              cuisineStatus: '',
-              fishStatus: formData.fishStatus,
-              foodType: 'fish' // 新增字段
-            })
-          } else if (classObj.type === 'vegetable') {
+          if (classObj.type === 'vegetable') {
             addList.push({
               iaPartitionId: formData.iaPartitionId,
               cuisineWeight: formData.cuisineWeight,
@@ -556,7 +496,7 @@
               status: formData.cuisineStatus,
               cuisineStatus: formData.cuisineStatus,
               fishStatus: '',
-              foodType: 'cuisine' // 新增字段
+              foodType: 'cuisine'
             })
           }
         }
@@ -611,29 +551,24 @@
 
     // 2. 并发获取每个批次下的任务列表
     const batchTasks = await Promise.all(
-      allBatches.map(async (batch) => {
-        const taskRes = await AgricultureCropBatchTaskService.listBatchTask({
-          batchId: batch.batchId
-        })
-        return { batch, tasks: taskRes.rows || [] }
+      allBatches.map(async (batch: any) => {
+        const taskRes = await AgricultureCropBatchService.getBatchTasks(batch.batchId)
+        return { batch, tasks: (taskRes as any).data || [] }
       })
     )
 
     // 3. 只保留所有任务都为已完成（status === '3'）的批次
     const filteredBatches: any[] = []
     for (const { batch, tasks } of batchTasks) {
-      // 按 fishDish 分组
-      const fishTasks = tasks.filter((task: any) => task.fishDish === 0);
+      // 只保留蔬菜任务（fishDish === 1）
       const vegTasks = tasks.filter((task: any) => task.fishDish === 1);
 
-      // 判断每组是否全部完成
-      const fishDone = fishTasks.length > 0 && fishTasks.every((task: any) => String(task.status) === '3');
+      // 判断蔬菜任务是否全部完成
       const vegDone = vegTasks.length > 0 && vegTasks.every((task: any) => String(task.status) === '3');
 
-      // 只要有一组完成就显示
-      if (fishDone || vegDone) {
-        // 标记哪些种质完成
-        batch.fishDone = fishDone;
+      // 蔬菜任务完成就显示
+      if (vegDone) {
+        // 标记蔬菜任务完成
         batch.vegDone = vegDone;
         filteredBatches.push(batch);
       }
@@ -641,14 +576,9 @@
 
     // 4. 查询采摘记录
     for (const batch of filteredBatches) {
-      // 拼接种质名
-      const fishClass = germplasmList.value.find((c: any) => c.classId == batch.germplasmId)
-      const vegetableClass = germplasmList.value.find((c: any) => c.classId == batch.vegetableId)
-      if (fishClass && vegetableClass) {
-        batch.displayClassName = `${fishClass.className} / ${vegetableClass.className}`
-      } else if (fishClass) {
-        batch.displayClassName = fishClass.className
-      } else if (vegetableClass) {
+      // 拼接种质名（只显示蔬菜）
+      const vegetableClass = germplasmList.value.find((c: any) => c.classId == (batch as any).vegetableId)
+      if (vegetableClass) {
         batch.displayClassName = vegetableClass.className
       } else {
         batch.displayClassName = ''
@@ -682,7 +612,7 @@
     const res = await AgricultureClassService.listClass({})
     germplasmList.value = (res.rows || []).map((item: any) => ({
       ...item,
-      type: item.classType === '0' ? 'fish' : 'vegetable'
+      type: 'vegetable' // 只保留蔬菜类型
     }))
     console.log('germplasmList:', germplasmList.value)
   }
@@ -728,15 +658,9 @@
     return found ? found.classImage : ''
   }
 
-  // 获取当前批次的所有种质图片（鱼类和蔬菜）
+  // 获取当前批次的所有种质图片（蔬菜）
   function getClassImages(item: any) {
     const images = []
-    if (item.germplasmId) {
-      // 获取鱼类图片
-      const fishImg = getClassImage(item.germplasmId)
-      // 有图片则加入数组
-      if (fishImg) images.push(fishImg)
-    }
     if (item.vegetableId) {
       // 获取蔬菜图片
       const vegImg = getClassImage(item.vegetableId)
@@ -749,17 +673,13 @@
     return images
   }
 
-  async function openHarvestDialog(batchId: string | number, fishDone: boolean, vegDone: boolean, hasHarvestRecord: boolean) {
+  async function openHarvestDialog(batchId: string | number, vegDone: boolean, hasHarvestRecord: boolean) {
     currentBatchId.value = batchId
-    // 新增：请求分区详情，获取种质
+    // 请求分区详情，获取种质
     const res = await AgricultureCropBatchService.getBatch(batchId)
-    if (res.data && res.data.germplasmId) {
-      currentGermplasmId.value = Number(res.data.germplasmId)
+    if (res.data && (res.data as any).vegetableId) {
+      currentVegetableId.value = Number((res.data as any).vegetableId)
     }
-    if (res.data && res.data.vegetableId) {
-      currentVegetableId.value = Number(res.data.vegetableId)
-    }
-    batchTask.fishDone = fishDone
     batchTask.vegDone = vegDone
 
     if (!hasHarvestRecord) {
@@ -767,7 +687,6 @@
       addProcess(
         'Add',
         currentBatchId.value ?? undefined,
-        currentGermplasmId.value ?? undefined,
         currentVegetableId.value ?? undefined
       )
     } else {
@@ -798,16 +717,12 @@
     return found ? found.name : pastureId
   }
 
-  const isFish = ref(false)
-  const isVegetable = ref(false)
+  const isVegetable = ref(true) // 只保留蔬菜
 
   // 监听食品名称变化
   watch(
     () => addForm.name,
     (val: string[]) => {
-      isFish.value = val.some((name) =>
-        germplasmList.value.find((c) => c.className === name && c.type === 'fish')
-      )
       isVegetable.value = val.some((name) =>
         germplasmList.value.find((c) => c.className === name && c.type === 'vegetable')
       )

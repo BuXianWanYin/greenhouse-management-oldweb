@@ -1,9 +1,12 @@
 import request from '@/utils/http'
+
 import { AgricultureCropBatchInfoResult, AgricultureCropBatchListPageResult } from '@/types/agriculture/batch'
+
 import { CodeMsgResult } from '@/types/axios'
 
 // 种植批次
 export class AgricultureCropBatchService {
+
     // 查询批次列表
     static listBatch(query: any) {
         return request.get<AgricultureCropBatchListPageResult>({
@@ -18,7 +21,6 @@ export class AgricultureCropBatchService {
             url: `/agriculture/batch/listByPasture/${pastureId}`
         })
     }
-
 
     // 查询批次详细
     static getBatch(batchId: number | string) {
@@ -59,6 +61,13 @@ export class AgricultureCropBatchService {
             },
             responseType: 'blob',
             data: data
+        })
+    }
+
+    // 根据批次ID查询批次任务列表
+    static getBatchTasks(batchId: number | string) {
+        return request.get<AgricultureCropBatchTaskInfoResult[]>({
+            url: `/agriculture/batch/${batchId}/tasks`
         })
     }
 }

@@ -2,8 +2,8 @@
   <div class="page-content">
     <!-- 搜索栏开始 -->
     <el-form :model="queryParams" ref="queryRef" label-width="100px">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :lg="6">
+      <el-row :gutter="20" class="search-row">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="节点名称" prop="nodeName">
             <el-input placeholder="请输入节点名称" v-model="queryParams.nodeName" @keyup.enter="handleQuery">
               <template #prefix>
@@ -12,7 +12,7 @@
             </el-input>
           </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="节点状态" prop="nodeStatus">
             <el-select v-model="queryParams.nodeStatus" placeholder="请选择状态" clearable style="width: 100%">
               <el-option label="未开始" value="0" />
@@ -21,7 +21,7 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="提醒状态" prop="remindStatus">
             <el-select v-model="queryParams.remindStatus" placeholder="请选择提醒状态" clearable style="width: 100%">
               <el-option label="未提醒" value="0" />
@@ -29,20 +29,21 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <div style="width: 12px"></div>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-button @click="handleQuery" v-ripple>
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="resetForm(queryRef)" v-ripple>
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-          <el-button @click="handleAdd" v-auth="['agriculture:growthnode:add']" v-ripple>
-            <el-icon><Plus /></el-icon>新增
-          </el-button>
-          <el-button @click="handleExport" v-auth="['agriculture:growthnode:export']" v-ripple>
-            <el-icon><Download /></el-icon>导出
-          </el-button>
+        <el-col :xs="24" :sm="24" :md="24" :lg="9" :xl="12" class="button-col">
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery" v-ripple>
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button type="info" @click="resetForm(queryRef)" v-ripple>
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+            <el-button type="success" @click="handleAdd" v-auth="['agriculture:growthnode:add']" v-ripple>
+              <el-icon><Plus /></el-icon>新增
+            </el-button>
+            <el-button type="warning" @click="handleExport" v-auth="['agriculture:growthnode:export']" v-ripple>
+              <el-icon><Download /></el-icon>导出
+            </el-button>
+          </el-form-item>
         </el-col>
       </el-row>
     </el-form>
@@ -339,6 +340,21 @@ onMounted(() => {
 <style lang="scss" scoped>
 .page-content {
   padding: 20px;
+}
+
+.search-row {
+  .button-col {
+    :deep(.el-form-item) {
+      margin-bottom: 0;
+      
+      .el-form-item__content {
+        display: flex;
+        gap: 10px;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+      }
+    }
+  }
 }
 </style>
 

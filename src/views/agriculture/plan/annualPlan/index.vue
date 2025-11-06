@@ -2,8 +2,8 @@
   <div class="page-content">
     <!-- 搜索栏开始 -->
     <el-form :model="queryParams" ref="queryRef" label-width="100px">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :lg="6">
+      <el-row :gutter="20" class="search-row">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="计划名称" prop="planName">
             <el-input placeholder="请输入计划名称" v-model="queryParams.planName" @keyup.enter="handleQuery">
               <template #prefix>
@@ -12,7 +12,7 @@
             </el-input>
           </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="计划年份" prop="planYear">
             <el-date-picker
               v-model="queryParams.planYear"
@@ -24,7 +24,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
           <el-form-item label="计划状态" prop="planStatus">
             <el-select v-model="queryParams.planStatus" placeholder="请选择状态" clearable style="width: 100%">
               <el-option label="进行中" value="0" />
@@ -33,20 +33,21 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <div style="width: 12px"></div>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <el-button @click="handleQuery" v-ripple>
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="resetForm(queryRef)" v-ripple>
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-          <el-button @click="handleAdd" v-auth="['agriculture:annualplan:add']" v-ripple>
-            <el-icon><Plus /></el-icon>新增
-          </el-button>
-          <el-button @click="handleExport" v-auth="['agriculture:annualplan:export']" v-ripple>
-            <el-icon><Download /></el-icon>导出
-          </el-button>
+        <el-col :xs="24" :sm="24" :md="24" :lg="9" :xl="12" class="button-col">
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery" v-ripple>
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button type="info" @click="resetForm(queryRef)" v-ripple>
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+            <el-button type="success" @click="handleAdd" v-auth="['agriculture:annualplan:add']" v-ripple>
+              <el-icon><Plus /></el-icon>新增
+            </el-button>
+            <el-button type="warning" @click="handleExport" v-auth="['agriculture:annualplan:export']" v-ripple>
+              <el-icon><Download /></el-icon>导出
+            </el-button>
+          </el-form-item>
         </el-col>
       </el-row>
     </el-form>
@@ -60,8 +61,8 @@
       <el-table-column label="计划年份" prop="planYear" width="100" align="center" />
       <el-table-column label="计划类型" prop="planType" width="120" align="center">
         <template #default="scope">
-          <el-tag v-if="scope.row.planType === '0'">年度计划</el-tag>
-          <el-tag v-else-if="scope.row.planType === '1'" type="success">季度计划</el-tag>
+          <el-tag v-if="scope.row.planType === 'annual'">年度计划</el-tag>
+          <el-tag v-else-if="scope.row.planType === 'seasonal'" type="success">季度计划</el-tag>
           <el-tag v-else type="info">{{ scope.row.planType }}</el-tag>
         </template>
       </el-table-column>
@@ -77,8 +78,11 @@
       <el-table-column label="结束日期" prop="endDate" width="120" align="center" />
       <el-table-column label="总面积(亩)" prop="totalArea" width="120" align="center" />
       <el-table-column label="创建时间" prop="createTime" width="180" align="center" />
-      <el-table-column label="操作" width="200" align="center" fixed="right">
+      <el-table-column label="操作" width="250" align="center" fixed="right">
         <template #default="scope">
+          <el-button link type="primary" @click="handleDetail(scope.row)" v-auth="['agriculture:annualplan:query']">
+            <el-icon><View /></el-icon>详情
+          </el-button>
           <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:annualplan:edit']">
             <el-icon><EditPen /></el-icon>修改
           </el-button>
@@ -172,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { Search, Refresh, Plus, Download, Document, EditPen, Delete } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Download, Document, EditPen, Delete, View } from '@element-plus/icons-vue'
 import { AgricultureAnnualPlanService } from '@/api/agriculture/annualPlanApi'
 import { ref, reactive, onMounted } from 'vue'
 import { resetForm } from '@/utils/utils'
@@ -180,7 +184,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { FormInstance } from 'element-plus'
 import { AgricultureAnnualPlanResult } from '@/types/agriculture/annualplan'
 import { downloadExcel } from '@/utils/utils'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const planList = ref<AgricultureAnnualPlanResult[]>([])
 const open = ref(false)
 const loading = ref(true)
@@ -263,6 +269,14 @@ const handleAdd = () => {
   title.value = '添加年度种植规划'
 }
 
+/** 详情按钮操作 */
+const handleDetail = (row: AgricultureAnnualPlanResult) => {
+  router.push({
+    path: '/agriculture/plan/annualPlan/detail',
+    query: { planId: row.planId }
+  })
+}
+
 /** 修改按钮操作 */
 const handleUpdate = async (row: AgricultureAnnualPlanResult) => {
   reset()
@@ -340,6 +354,21 @@ onMounted(() => {
 <style lang="scss" scoped>
 .page-content {
   padding: 20px;
+}
+
+.search-row {
+  .button-col {
+    :deep(.el-form-item) {
+      margin-bottom: 0;
+      
+      .el-form-item__content {
+        display: flex;
+        gap: 10px;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+      }
+    }
+  }
 }
 </style>
 

@@ -153,7 +153,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, Edit, Delete, Calendar, Timer } from '@element-plus/icons-vue'
-import { AgricultureCropBatchTaskService } from "@/api/agriculture/batchTaskApi"
+import { AgricultureCropBatchTaskService } from "@/api/agriculture/cropBatchTaskApi"
 import type { AgricultureCropBatchTaskResult } from '@/types/agriculture/batchTask.d'
 import TaskDetail from "../../TaskDetail/index.vue"
 

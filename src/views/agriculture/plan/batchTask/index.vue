@@ -32,7 +32,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import TaskList from './TaskList.vue'
 import SearchMenu from '../../SearchMenu/index.vue'
-import { AgricultureCropBatchService } from '@/api/agriculture/batchApi'
+import { AgricultureCropBatchService } from '@/api/agriculture/cropBatchApi'
 
 // 响应式状态
 const currentBatchId = ref<number | null>(null)

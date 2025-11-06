@@ -199,9 +199,9 @@
 
 <script setup>
 import { AgricultureTaskEmployeeService } from "@/api/agriculture/taskEmployeeApi"
-import { AgricultureCropBatchService } from "@/api/agriculture/batchApi";
+import { AgricultureCropBatchService } from "@/api/agriculture/cropBatchApi";
 import { AgricultureEmployeeService } from "@/api/agriculture/employeeApi";
-import { AgricultureCropBatchTaskService } from "@/api/agriculture/batchTaskApi";     
+import { AgricultureCropBatchTaskService } from "@/api/agriculture/cropBatchTaskApi";     
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { Document, User, Van, Paperclip, Plus, VideoCamera, Food,Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
