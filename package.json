@@ -1,6 +1,6 @@
 {
   "name": "fish-dish-web",
-  "description": "鱼菜共生后台管理",
+  "description": "温室种植计划管理与人员分工系统",
   "version": "0.1.0",
   "type": "module",
   "scripts": {

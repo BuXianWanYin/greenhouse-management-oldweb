@@ -148,4 +148,21 @@ export class UserService {
       responseType: 'blob'
     })
   }
+
+
+    // 获取管理员用户列表（权限字符包含admin）
+    static adminList(query: any) {
+      return request.get<UserListPageResult>({
+        url: '/system/user/adminList',
+        params: query
+      })
+    }
+  
+    // 获取普通员工用户列表（权限字符包含common或employee）
+    static employeeList(query: any) {
+      return request.get<UserListPageResult>({
+        url: '/system/user/employeeList',
+        params: query
+      })
+    }
 }

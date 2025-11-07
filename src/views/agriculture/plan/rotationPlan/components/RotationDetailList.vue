@@ -11,7 +11,11 @@
       <el-table-column label="轮作ID" prop="rotationId" width="100" />
       <el-table-column label="种质ID" prop="classId" width="100" />
       <el-table-column label="轮作顺序" prop="rotationOrder" width="100" align="center" />
-      <el-table-column label="季节类型" prop="seasonType" width="120" align="center" />
+      <el-table-column label="季节类型" prop="seasonType" width="120" align="center">
+        <template #default="scope">
+          {{ getSeasonTypeName(scope.row.seasonType) }}
+        </template>
+      </el-table-column>
       <el-table-column label="种植面积(亩)" prop="plantingArea" width="120" align="center" />
       <el-table-column label="种植密度" prop="plantingDensity" width="120" align="center" />
       <el-table-column label="预期开始" prop="expectedStartDate" width="120" align="center" />
@@ -238,6 +242,30 @@ watch(() => props.rotationId, () => {
   form.rotationId = props.rotationId
   getList()
 })
+
+/** 获取季节类型中文名称 */
+const getSeasonTypeName = (seasonType: string | undefined | null): string => {
+  if (!seasonType) return '--'
+  
+  const seasonMap: { [key: string]: string } = {
+    '1': '春季',
+    '2': '夏季',
+    '3': '秋季',
+    '4': '冬季',
+    'spring': '春季',
+    'summer': '夏季',
+    'autumn': '秋季',
+    'fall': '秋季',
+    'winter': '冬季',
+    '春季': '春季',
+    '夏季': '夏季',
+    '秋季': '秋季',
+    '冬季': '冬季'
+  }
+  
+  const key = String(seasonType).toLowerCase()
+  return seasonMap[key] || seasonType
+}
 
 onMounted(() => {
   getList()

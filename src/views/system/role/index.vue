@@ -39,7 +39,14 @@
     </table-bar>
 
     <!-- 角色列表 -->
-    <art-table :data="roleList">
+    <art-table
+      :data="roleList"
+      :total="total"
+      :current-page="queryParams.pageNum"
+      :page-size="queryParams.pageSize"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+    >
       <template #default>
         <el-table-column label="角色名称" prop="roleName" v-if="columns[0].show" />
         <el-table-column label="权限字符" prop="roleKey" v-if="columns[1].show" />
@@ -230,8 +237,11 @@
   const roleList = ref<RoleResult[]>([])
   const menuOptions = ref<MenuOptionType[]>([])
   const allocationUserRef = ref()
+  const total = ref(0)
 
   const queryParams = reactive({
+    pageNum: 1,
+    pageSize: 10,
     roleName: '',
     roleKey: '',
     status: ''
@@ -298,7 +308,10 @@
   // 查询角色列表
   const getList = async () => {
     const res = await RoleService.listRole(queryParams)
-    roleList.value = res.rows
+    if (res.code === 200) {
+      roleList.value = res.rows || []
+      total.value = res.total || 0
+    }
   }
 
   // 查询菜单树结构
@@ -311,6 +324,20 @@
 
   // 搜索按钮操作
   const search = () => {
+    queryParams.pageNum = 1
+    getList()
+  }
+
+  // 每页条数改变
+  const handleSizeChange = (size: number) => {
+    queryParams.pageSize = size
+    queryParams.pageNum = 1
+    getList()
+  }
+
+  // 当前页改变
+  const handleCurrentChange = (page: number) => {
+    queryParams.pageNum = page
     getList()
   }
 

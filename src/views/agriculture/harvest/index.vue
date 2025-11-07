@@ -183,7 +183,7 @@
     <el-dialog v-model="batchTask.open" :title="batchTask.title" width="1300px">
       <div style="height: 500px; width: 100%; overflow: auto">
         <!-- <Task :batchId="batchTask.batchId" :tableBorder="true" /> -->
-        <Task :batchId="batchTask.batchId" :tableBorder="true" :hasHarvestRecord="batchTask.hasHarvestRecord" />
+        <Task :batchId="batchTask.batchId" :tableBorder="true" />
       </div>
     </el-dialog>
 
@@ -321,7 +321,7 @@
   import { AgricultureClassService } from '@/api/agriculture/classApi'
   import { AgricultureCropBatchService } from '@/api/agriculture/cropBatchApi'
   import { UserService } from '@/api/system/userApi'
-  import Task from '../batch/Task.vue'
+  import Task from '../plan/batchTask/TaskList.vue'
   import { partitionFoodService } from '@/api/agriculture/partitionFoodApi'
   import { AgricultureCropBatchTaskService } from '@/api/agriculture/cropBatchTaskApi'
   import {

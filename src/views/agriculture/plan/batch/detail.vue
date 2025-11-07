@@ -24,7 +24,7 @@
               <el-descriptions-item label="批次ID">{{ batchInfo.batchId }}</el-descriptions-item>
               <el-descriptions-item label="批次名称">{{ batchInfo.batchName }}</el-descriptions-item>
               <el-descriptions-item label="种质">{{ batchInfo.className || '--' }}</el-descriptions-item>
-              <el-descriptions-item label="所属温室ID">{{ batchInfo.pastureId }}</el-descriptions-item>
+              <el-descriptions-item label="所属温室">{{ getPastureName(batchInfo.pastureId) }}</el-descriptions-item>
               <el-descriptions-item label="种植面积(亩)">{{ batchInfo.cropArea }}</el-descriptions-item>
               <el-descriptions-item label="负责人">{{ batchInfo.nickName || '--' }}</el-descriptions-item>
               <el-descriptions-item label="开始时间">{{ batchInfo.startTime || '--' }}</el-descriptions-item>
@@ -81,17 +81,38 @@
         <el-form-item label="批次名称" prop="batchName">
           <el-input v-model="form.batchName" placeholder="请输入批次名称" />
         </el-form-item>
-        <el-form-item label="种质ID" prop="classId">
-          <el-input-number v-model="form.classId" :min="1" placeholder="请输入种质ID" style="width: 100%" />
+        <el-form-item label="种植种质" prop="classId">
+          <el-select v-model="form.classId" placeholder="请选择种植种质" clearable style="width: 100%">
+            <el-option
+              v-for="item in classOptions"
+              :key="item.classId"
+              :label="item.className"
+              :value="item.classId"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="所属温室ID" prop="pastureId">
-          <el-input-number v-model="form.pastureId" :min="1" placeholder="请输入温室ID" style="width: 100%" />
+        <el-form-item label="所属温室" prop="pastureId">
+          <el-select v-model="form.pastureId" placeholder="请选择所属温室" clearable style="width: 100%">
+            <el-option
+              v-for="item in pastureOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="种植面积(亩)" prop="cropArea">
           <el-input-number v-model="form.cropArea" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="负责人ID" prop="responsiblePersonId">
-          <el-input-number v-model="form.responsiblePersonId" :min="1" placeholder="请输入负责人ID" style="width: 100%" />
+        <el-form-item label="负责人" prop="responsiblePersonId">
+          <el-select v-model="form.responsiblePersonId" placeholder="请选择负责人" clearable style="width: 100%">
+            <el-option
+              v-for="item in userOptions"
+              :key="item.userId"
+              :label="item.nickName"
+              :value="item.userId"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="开始时间" prop="startTime">
           <el-date-picker
@@ -131,6 +152,9 @@ import { ElMessage } from 'element-plus'
 import { FormInstance } from 'element-plus'
 import { Document, EditPen, List, Calendar, Flag, Collection } from '@element-plus/icons-vue'
 import { AgricultureCropBatchService } from '@/api/agriculture/cropBatchApi'
+import { AgricultureClassService } from '@/api/agriculture/classApi'
+import { AgriculturePastureService } from '@/api/agriculture/pastureApi'
+import { UserService } from '@/api/system/userApi'
 import { AgricultureCropBatchResult } from '@/types/agriculture/batch'
 import BatchTaskList from '../batchTask/TaskList.vue'
 import GrowthStageList from './components/GrowthStageList.vue'
@@ -144,14 +168,17 @@ const loading = ref(true)
 const editOpen = ref(false)
 const batchInfo = ref<AgricultureCropBatchResult>({} as AgricultureCropBatchResult)
 const batchRef = ref<FormInstance>()
+const classOptions = ref<any[]>([])
+const pastureOptions = ref<any[]>([])
+const userOptions = ref<any[]>([])
 
 const initialFormState = {
   batchId: null,
   batchName: '',
-  classId: null,
-  pastureId: null,
+  classId: undefined as number | undefined,
+  pastureId: undefined as number | undefined,
   cropArea: 0,
-  responsiblePersonId: null,
+  responsiblePersonId: undefined as number | undefined,
   startTime: '',
   status: '0',
   remark: ''
@@ -161,7 +188,8 @@ const form = reactive({ ...initialFormState })
 
 const rules = reactive({
   batchName: [{ required: true, message: '批次名称不能为空', trigger: 'blur' }],
-  pastureId: [{ required: true, message: '所属温室ID不能为空', trigger: 'blur' }],
+  classId: [{ required: true, message: '种植种质不能为空', trigger: 'change' }],
+  pastureId: [{ required: true, message: '所属温室不能为空', trigger: 'change' }],
   cropArea: [{ required: true, message: '种植面积不能为空', trigger: 'blur' }]
 })
 
@@ -202,8 +230,74 @@ const submitForm = async () => {
   })
 }
 
+/** 获取种植列表 */
+const getClassList = async () => {
+  const res = await AgricultureClassService.listClass({})
+  if (res.code === 200) {
+    classOptions.value = res.rows || []
+  }
+}
+
+/** 获取温室列表 */
+const getPastureList = async () => {
+  const res = await AgriculturePastureService.listPasture({ pageNum: 1, pageSize: 1000 })
+  if (res.code === 200) {
+    pastureOptions.value = res.rows || []
+  }
+}
+
+/** 获取用户列表 */
+const getUserList = async () => {
+  try {
+    // 先查询第一页，获取总数
+    const firstRes = await UserService.listUser({ pageNum: 1, pageSize: 100 })
+    if (firstRes.code === 200) {
+      const total = firstRes.total || 0
+      const firstPageRows = firstRes.rows || []
+      
+      // 如果总数小于等于100，直接使用第一页数据
+      if (total <= 100) {
+        userOptions.value = firstPageRows
+        return
+      }
+      
+      // 如果总数大于100，需要分页查询所有数据
+      const allUsers = [...firstPageRows]
+      const totalPages = Math.ceil(total / 100)
+      
+      // 并发查询剩余页
+      const promises = []
+      for (let page = 2; page <= totalPages; page++) {
+        promises.push(UserService.listUser({ pageNum: page, pageSize: 100 }))
+      }
+      
+      const results = await Promise.all(promises)
+      results.forEach((res: any) => {
+        if (res.code === 200 && res.rows) {
+          allUsers.push(...res.rows)
+        }
+      })
+      
+      userOptions.value = allUsers
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    ElMessage.error('获取用户列表失败')
+  }
+}
+
+/** 根据温室ID获取温室名称 */
+const getPastureName = (pastureId: string | number | undefined) => {
+  if (!pastureId) return '--'
+  const found = pastureOptions.value.find((item: any) => String(item.id) === String(pastureId))
+  return found ? found.name : pastureId
+}
+
 onMounted(() => {
   getBatchInfo()
+  getClassList()
+  getPastureList()
+  getUserList()
 })
 </script>
 

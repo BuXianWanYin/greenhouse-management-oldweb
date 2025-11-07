@@ -1,110 +1,98 @@
 <template>
   <div class="page-content">
-    <!-- 搜索栏开始 -->
-    <el-form :model="queryParams" ref="queryRef" label-width="100px">
-      <el-row :gutter="20" class="search-row">
-        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
-          <el-form-item label="计划名称" prop="planName">
-            <el-input placeholder="请输入计划名称" v-model="queryParams.planName" @keyup.enter="handleQuery">
-              <template #prefix>
-                <el-icon><Document /></el-icon>
-              </template>
-            </el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
-          <el-form-item label="计划年份" prop="planYear">
-            <el-date-picker
-              v-model="queryParams.planYear"
-              type="year"
-              placeholder="选择年份"
-              format="YYYY"
-              value-format="YYYY"
-              style="width: 100%"
+    <!-- 年度种植规划 -->
+    <table-bar
+      :showTop="false"
+      @search="search"
+      @reset="resetForm(searchFormRef)"
+      @changeColumn="changeColumn"
+      :columns="columns"
+    >
+      <template #top>
+        <el-form :model="queryParams" ref="searchFormRef" label-width="82px">
+          <el-row :gutter="20">
+            <form-input
+              label="计划名称"
+              prop="planName"
+              @keyup.enter="search"
+              v-model="queryParams.planName"
             />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="5" :xl="4">
-          <el-form-item label="计划状态" prop="planStatus">
-            <el-select v-model="queryParams.planStatus" placeholder="请选择状态" clearable style="width: 100%">
-              <el-option label="进行中" value="0" />
-              <el-option label="已完成" value="1" />
-              <el-option label="已取消" value="2" />
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="24" :lg="9" :xl="12" class="button-col">
-          <el-form-item>
-            <el-button type="primary" @click="handleQuery" v-ripple>
-              <el-icon><Search /></el-icon>搜索
-            </el-button>
-            <el-button type="info" @click="resetForm(queryRef)" v-ripple>
-              <el-icon><Refresh /></el-icon>重置
-            </el-button>
-            <el-button type="success" @click="handleAdd" v-auth="['agriculture:annualplan:add']" v-ripple>
-              <el-icon><Plus /></el-icon>新增
-            </el-button>
-            <el-button type="warning" @click="handleExport" v-auth="['agriculture:annualplan:export']" v-ripple>
-              <el-icon><Download /></el-icon>导出
-            </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
-    </el-form>
-    <!-- 搜索栏结束 -->
+            <el-col :xs="24" :sm="12" :lg="6">
+              <el-form-item label="计划年份" prop="planYear">
+                <el-date-picker
+                  v-model="queryParams.planYear"
+                  type="year"
+                  placeholder="选择年份"
+                  format="YYYY"
+                  value-format="YYYY"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <form-select
+              label="计划状态"
+              prop="planStatus"
+              v-model="queryParams.planStatus"
+              :options="statusOptions"
+            />
+          </el-row>
+        </el-form>
+      </template>
+      <template #bottom>
+        <el-button @click="handleAdd" v-auth="['agriculture:annualplan:add']" v-ripple>新增</el-button>
+        <el-button @click="handleExport" v-auth="['agriculture:annualplan:export']" v-ripple>导出</el-button>
+      </template>
+    </table-bar>
 
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="planList" border>
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="计划ID" prop="planId" width="100" />
-      <el-table-column label="计划名称" prop="planName" min-width="150" show-overflow-tooltip />
-      <el-table-column label="计划年份" prop="planYear" width="100" align="center" />
-      <el-table-column label="计划类型" prop="planType" width="120" align="center">
-        <template #default="scope">
-          <el-tag v-if="scope.row.planType === 'annual'">年度计划</el-tag>
-          <el-tag v-else-if="scope.row.planType === 'seasonal'" type="success">季度计划</el-tag>
-          <el-tag v-else type="info">{{ scope.row.planType }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="计划状态" prop="planStatus" width="100" align="center">
-        <template #default="scope">
-          <el-tag v-if="scope.row.planStatus === '0'" type="success">进行中</el-tag>
-          <el-tag v-else-if="scope.row.planStatus === '1'" type="info">已完成</el-tag>
-          <el-tag v-else-if="scope.row.planStatus === '2'" type="danger">已取消</el-tag>
-          <el-tag v-else>{{ scope.row.planStatus }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="开始日期" prop="startDate" width="120" align="center" />
-      <el-table-column label="结束日期" prop="endDate" width="120" align="center" />
-      <el-table-column label="总面积(亩)" prop="totalArea" width="120" align="center" />
-      <el-table-column label="创建时间" prop="createTime" width="180" align="center" />
-      <el-table-column label="操作" width="250" align="center" fixed="right">
-        <template #default="scope">
-          <el-button link type="primary" @click="handleDetail(scope.row)" v-auth="['agriculture:annualplan:query']">
-            <el-icon><View /></el-icon>详情
-          </el-button>
-          <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:annualplan:edit']">
-            <el-icon><EditPen /></el-icon>修改
-          </el-button>
-          <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:annualplan:remove']">
-            <el-icon><Delete /></el-icon>删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-pagination
-      v-if="total > queryParams.pageSize"
-      background
-      layout="total, sizes, prev, pager, next, jumper"
+    <!-- 计划列表 -->
+    <art-table
+      :data="planList"
       :total="total"
-      :page-size="queryParams.pageSize"
       :current-page="queryParams.pageNum"
+      :page-size="queryParams.pageSize"
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
-      :page-sizes="[10, 20, 50, 100]"
-      style="margin-top: 20px; text-align: center"
-    />
+      v-loading="loading"
+    >
+      <template #default>
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="计划ID" prop="planId" width="100" v-if="columns[0].show" />
+        <el-table-column label="计划名称" prop="planName" min-width="150" show-overflow-tooltip v-if="columns[1].show" />
+        <el-table-column label="计划年份" prop="planYear" width="100" align="center" v-if="columns[2].show" />
+        <el-table-column label="计划类型" prop="planType" width="120" align="center" v-if="columns[3].show">
+          <template #default="scope">
+            <el-tag v-if="scope.row.planType === 'annual'">年度计划</el-tag>
+            <el-tag v-else-if="scope.row.planType === 'seasonal'" type="success">季度计划</el-tag>
+            <el-tag v-else type="info">{{ scope.row.planType }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="计划状态" prop="planStatus" width="100" align="center" v-if="columns[4].show">
+          <template #default="scope">
+            <el-tag v-if="scope.row.planStatus === '0'" type="success">进行中</el-tag>
+            <el-tag v-else-if="scope.row.planStatus === '1'" type="info">已完成</el-tag>
+            <el-tag v-else-if="scope.row.planStatus === '2'" type="danger">已取消</el-tag>
+            <el-tag v-else>{{ scope.row.planStatus }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="开始日期" prop="startDate" width="120" align="center" v-if="columns[5].show" />
+        <el-table-column label="结束日期" prop="endDate" width="120" align="center" v-if="columns[6].show" />
+        <el-table-column label="总面积(亩)" prop="totalArea" width="120" align="center" v-if="columns[7].show" />
+        <el-table-column label="创建时间" prop="createTime" width="180" align="center" v-if="columns[8].show" />
+        <el-table-column label="操作" width="250" align="center" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="handleDetail(scope.row)" v-auth="['agriculture:annualplan:query']">
+              <el-icon><View /></el-icon>详情
+            </el-button>
+            <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:annualplan:edit']">
+              <el-icon><EditPen /></el-icon>修改
+            </el-button>
+            <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:annualplan:remove']">
+              <el-icon><Delete /></el-icon>删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </template>
+    </art-table>
 
     <!-- 添加或修改年度种植规划对话框 -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
@@ -193,7 +181,34 @@ const loading = ref(true)
 const total = ref(0)
 const title = ref('')
 const queryRef = ref()
+const searchFormRef = ref<FormInstance>()
 const planRef = ref<FormInstance>()
+
+const columns = reactive([
+  { name: '计划ID', show: true },
+  { name: '计划名称', show: true },
+  { name: '计划年份', show: true },
+  { name: '计划类型', show: true },
+  { name: '计划状态', show: true },
+  { name: '开始日期', show: true },
+  { name: '结束日期', show: true },
+  { name: '总面积(亩)', show: true },
+  { name: '创建时间', show: true }
+])
+
+const statusOptions = ref([
+  { label: '进行中', value: '0' },
+  { label: '已完成', value: '1' },
+  { label: '已取消', value: '2' }
+])
+
+const changeColumn = (list: any) => {
+  columns.forEach((col, index) => {
+    if (list[index]) {
+      col.show = list[index].show
+    }
+  })
+}
 
 const initialFormState = {
   planId: null,
@@ -245,10 +260,12 @@ const getList = async () => {
 }
 
 /** 搜索按钮操作 */
-const handleQuery = () => {
+const search = () => {
   queryParams.pageNum = 1
   getList()
 }
+
+const handleQuery = search
 
 /** 每页条数改变 */
 const handleSizeChange = (size: number) => {
@@ -354,21 +371,6 @@ onMounted(() => {
 <style lang="scss" scoped>
 .page-content {
   padding: 20px;
-}
-
-.search-row {
-  .button-col {
-    :deep(.el-form-item) {
-      margin-bottom: 0;
-      
-      .el-form-item__content {
-        display: flex;
-        gap: 10px;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-      }
-    }
-  }
 }
 </style>
 

@@ -1,75 +1,75 @@
 <template>
   <div class="page-content">
-    <!-- 搜索栏开始 -->
-    <el-form :model="queryParams" ref="queryRef" label-width="100px">
-      <el-row :gutter="20" class="search-row">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="5">
-          <el-form-item label="轮作ID" prop="rotationId">
-            <el-input placeholder="请输入轮作ID" v-model="queryParams.rotationId" @keyup.enter="handleQuery" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="5">
-          <el-form-item label="季节类型" prop="seasonType">
-            <el-input placeholder="请输入季节类型" v-model="queryParams.seasonType" @keyup.enter="handleQuery" />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="24" :lg="12" :xl="14" class="button-col">
-          <el-form-item>
-            <el-button type="primary" @click="handleQuery" v-ripple>
-              <el-icon><Search /></el-icon>搜索
-            </el-button>
-            <el-button type="info" @click="resetForm(queryRef)" v-ripple>
-              <el-icon><Refresh /></el-icon>重置
-            </el-button>
-            <el-button type="success" @click="handleAdd" v-auth="['agriculture:rotationdetail:add']" v-ripple>
-              <el-icon><Plus /></el-icon>新增
-            </el-button>
-            <el-button type="warning" @click="handleExport" v-auth="['agriculture:rotationdetail:export']" v-ripple>
-              <el-icon><Download /></el-icon>导出
-            </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
-    </el-form>
-    <!-- 搜索栏结束 -->
+    <!-- 轮作明细 -->
+    <table-bar
+      :showTop="false"
+      @search="search"
+      @reset="resetForm(searchFormRef)"
+      @changeColumn="changeColumn"
+      :columns="columns"
+    >
+      <template #top>
+        <el-form :model="queryParams" ref="searchFormRef" label-width="82px">
+          <el-row :gutter="20">
+            <form-input
+              label="轮作ID"
+              prop="rotationId"
+              @keyup.enter="search"
+              v-model="queryParams.rotationId"
+            />
+            <form-input
+              label="季节类型"
+              prop="seasonType"
+              @keyup.enter="search"
+              v-model="queryParams.seasonType"
+            />
+          </el-row>
+        </el-form>
+      </template>
+      <template #bottom>
+        <el-button @click="handleAdd" v-auth="['agriculture:rotationdetail:add']" v-ripple>新增</el-button>
+        <el-button @click="handleExport" v-auth="['agriculture:rotationdetail:export']" v-ripple>导出</el-button>
+      </template>
+    </table-bar>
 
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="detailList" border style="width: 100%">
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="明细ID" prop="detailId" width="100" />
-      <el-table-column label="轮作ID" prop="rotationId" width="100" />
-      <el-table-column label="种质ID" prop="classId" width="100" />
-      <el-table-column label="轮作顺序" prop="rotationOrder" width="100" align="center" />
-      <el-table-column label="季节类型" prop="seasonType" min-width="120" align="center" />
-      <el-table-column label="种植面积(亩)" prop="plantingArea" min-width="120" align="center" />
-      <el-table-column label="种植密度" prop="plantingDensity" min-width="120" align="center" />
-      <el-table-column label="预期开始" prop="expectedStartDate" width="120" align="center" />
-      <el-table-column label="预期结束" prop="expectedEndDate" width="120" align="center" />
-      <el-table-column label="创建时间" prop="createTime" width="180" align="center" />
-      <el-table-column label="操作" width="200" align="center" fixed="right">
-        <template #default="scope">
-          <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:rotationdetail:edit']">
-            <el-icon><EditPen /></el-icon>修改
-          </el-button>
-          <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:rotationdetail:remove']">
-            <el-icon><Delete /></el-icon>删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-pagination
-      v-if="total > queryParams.pageSize"
-      background
-      layout="total, sizes, prev, pager, next, jumper"
+    <!-- 轮作明细列表 -->
+    <art-table
+      :data="detailList"
       :total="total"
-      :page-size="queryParams.pageSize"
       :current-page="queryParams.pageNum"
+      :page-size="queryParams.pageSize"
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
-      :page-sizes="[10, 20, 50, 100]"
-      style="margin-top: 20px; text-align: center"
-    />
+      v-loading="loading"
+    >
+      <template #default>
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="明细ID" prop="detailId" width="100" v-if="columns[0].show" />
+        <el-table-column label="轮作ID" prop="rotationId" width="100" v-if="columns[1].show" />
+        <el-table-column label="种质ID" prop="classId" width="100" v-if="columns[2].show" />
+        <el-table-column label="轮作顺序" prop="rotationOrder" width="100" align="center" v-if="columns[3].show" />
+        <el-table-column label="季节类型" prop="seasonType" min-width="120" align="center" v-if="columns[4].show">
+          <template #default="scope">
+            {{ getSeasonTypeName(scope.row.seasonType) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="种植面积(亩)" prop="plantingArea" min-width="120" align="center" v-if="columns[5].show" />
+        <el-table-column label="种植密度" prop="plantingDensity" min-width="120" align="center" v-if="columns[6].show" />
+        <el-table-column label="预期开始" prop="expectedStartDate" width="120" align="center" v-if="columns[7].show" />
+        <el-table-column label="预期结束" prop="expectedEndDate" width="120" align="center" v-if="columns[8].show" />
+        <el-table-column label="创建时间" prop="createTime" width="180" align="center" v-if="columns[9].show" />
+        <el-table-column label="操作" width="200" align="center" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:rotationdetail:edit']">
+              <el-icon><EditPen /></el-icon>修改
+            </el-button>
+            <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:rotationdetail:remove']">
+              <el-icon><Delete /></el-icon>删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </template>
+    </art-table>
 
     <!-- 添加或修改轮作明细对话框 -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
@@ -142,7 +142,29 @@ const loading = ref(true)
 const total = ref(0)
 const title = ref('')
 const queryRef = ref()
+const searchFormRef = ref<FormInstance>()
 const detailRef = ref<FormInstance>()
+
+const columns = reactive([
+  { name: '明细ID', show: true },
+  { name: '轮作ID', show: true },
+  { name: '种质ID', show: true },
+  { name: '轮作顺序', show: true },
+  { name: '季节类型', show: true },
+  { name: '种植面积(亩)', show: true },
+  { name: '种植密度', show: true },
+  { name: '预期开始', show: true },
+  { name: '预期结束', show: true },
+  { name: '创建时间', show: true }
+])
+
+const changeColumn = (list: any) => {
+  columns.forEach((col, index) => {
+    if (list[index]) {
+      col.show = list[index].show
+    }
+  })
+}
 
 const initialFormState = {
   detailId: null,
@@ -185,10 +207,12 @@ const getList = async () => {
 }
 
 /** 搜索按钮操作 */
-const handleQuery = () => {
+const search = () => {
   queryParams.pageNum = 1
   getList()
 }
+
+const handleQuery = search
 
 /** 每页条数改变 */
 const handleSizeChange = (size: number) => {
@@ -277,6 +301,30 @@ const reset = () => {
   Object.assign(form, initialFormState)
 }
 
+/** 获取季节类型中文名称 */
+const getSeasonTypeName = (seasonType: string | undefined | null): string => {
+  if (!seasonType) return '--'
+  
+  const seasonMap: { [key: string]: string } = {
+    '1': '春季',
+    '2': '夏季',
+    '3': '秋季',
+    '4': '冬季',
+    'spring': '春季',
+    'summer': '夏季',
+    'autumn': '秋季',
+    'fall': '秋季',
+    'winter': '冬季',
+    '春季': '春季',
+    '夏季': '夏季',
+    '秋季': '秋季',
+    '冬季': '冬季'
+  }
+  
+  const key = String(seasonType).toLowerCase()
+  return seasonMap[key] || seasonType
+}
+
 // 初始化
 onMounted(() => {
   getList()
@@ -286,25 +334,6 @@ onMounted(() => {
 <style lang="scss" scoped>
 .page-content {
   padding: 20px;
-}
-
-.search-row {
-  .button-col {
-    :deep(.el-form-item) {
-      margin-bottom: 0;
-      
-      .el-form-item__content {
-        display: flex;
-        gap: 10px;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-      }
-    }
-  }
-}
-
-:deep(.el-table) {
-  width: 100% !important;
 }
 </style>
 

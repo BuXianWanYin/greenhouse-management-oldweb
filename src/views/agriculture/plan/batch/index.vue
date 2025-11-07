@@ -1,92 +1,80 @@
 <template>
   <div class="page-content">
-    <!-- 搜索栏开始 -->
-    <el-form :model="queryParams" ref="queryRef" label-width="100px">
-      <el-row :gutter="20" class="search-row">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="5">
-          <el-form-item label="批次名称" prop="batchName">
-            <el-input placeholder="请输入批次名称" v-model="queryParams.batchName" @keyup.enter="handleQuery">
-              <template #prefix>
-                <el-icon><Document /></el-icon>
-              </template>
-            </el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="5">
-          <el-form-item label="批次状态" prop="status">
-            <el-select v-model="queryParams.status" placeholder="请选择状态" clearable style="width: 100%">
-              <el-option label="进行中" value="0" />
-              <el-option label="已完成" value="1" />
-              <el-option label="已取消" value="2" />
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="24" :lg="12" :xl="14" class="button-col">
-          <el-form-item>
-            <el-button type="primary" @click="handleQuery" v-ripple>
-              <el-icon><Search /></el-icon>搜索
-            </el-button>
-            <el-button type="info" @click="resetForm(queryRef)" v-ripple>
-              <el-icon><Refresh /></el-icon>重置
-            </el-button>
-            <el-button type="success" @click="handleAdd" v-auth="['agriculture:batch:add']" v-ripple>
-              <el-icon><Plus /></el-icon>新增
-            </el-button>
-            <el-button type="warning" @click="handleExport" v-auth="['agriculture:batch:export']" v-ripple>
-              <el-icon><Download /></el-icon>导出
-            </el-button>
-          </el-form-item>
-        </el-col>
-      </el-row>
-    </el-form>
-    <!-- 搜索栏结束 -->
+    <!-- 批次管理 -->
+    <table-bar
+      :showTop="false"
+      @search="search"
+      @reset="resetForm(searchFormRef)"
+      @changeColumn="changeColumn"
+      :columns="columns"
+    >
+      <template #top>
+        <el-form :model="queryParams" ref="searchFormRef" label-width="82px">
+          <el-row :gutter="20">
+            <form-input
+              label="批次名称"
+              prop="batchName"
+              @keyup.enter="search"
+              v-model="queryParams.batchName"
+            />
+            <form-select
+              label="批次状态"
+              prop="status"
+              v-model="queryParams.status"
+              :options="statusOptions"
+            />
+          </el-row>
+        </el-form>
+      </template>
+      <template #bottom>
+        <el-button @click="handleAdd" v-auth="['agriculture:batch:add']" v-ripple>新增</el-button>
+        <el-button @click="handleExport" v-auth="['agriculture:batch:export']" v-ripple>导出</el-button>
+      </template>
+    </table-bar>
 
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="batchList" border>
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="批次ID" prop="batchId" width="100" />
-      <el-table-column label="批次名称" prop="batchName" min-width="150" show-overflow-tooltip />
-      <el-table-column label="种质" prop="className" width="120" align="center" />
-      <el-table-column label="所属温室" prop="pastureId" width="120" align="center" />
-      <el-table-column label="种植面积(亩)" prop="cropArea" width="120" align="center" />
-      <el-table-column label="负责人" prop="nickName" width="100" align="center" />
-      <el-table-column label="开始时间" prop="startTime" width="120" align="center" />
-      <el-table-column label="状态" prop="status" width="100" align="center">
-        <template #default="scope">
-          <el-tag v-if="scope.row.status === '0'" type="success">进行中</el-tag>
-          <el-tag v-else-if="scope.row.status === '1'" type="info">已完成</el-tag>
-          <el-tag v-else-if="scope.row.status === '2'" type="danger">已取消</el-tag>
-          <el-tag v-else>{{ scope.row.status }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="创建时间" prop="createTime" width="180" align="center" />
-      <el-table-column label="操作" width="200" align="center" fixed="right">
-        <template #default="scope">
-          <el-button link type="primary" @click="handleDetail(scope.row)" v-auth="['agriculture:batch:query']">
-            <el-icon><View /></el-icon>详情
-          </el-button>
-          <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:batch:edit']">
-            <el-icon><EditPen /></el-icon>修改
-          </el-button>
-          <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:batch:remove']">
-            <el-icon><Delete /></el-icon>删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-pagination
-      v-if="total > queryParams.pageSize"
-      background
-      layout="total, sizes, prev, pager, next, jumper"
+    <!-- 批次列表 -->
+    <art-table
+      :data="batchList"
       :total="total"
-      :page-size="queryParams.pageSize"
       :current-page="queryParams.pageNum"
+      :page-size="queryParams.pageSize"
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
-      :page-sizes="[10, 20, 50, 100]"
-      style="margin-top: 20px; text-align: center"
-    />
+      v-loading="loading"
+    >
+      <template #default>
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="批次ID" prop="batchId" width="100" v-if="columns[0].show" />
+        <el-table-column label="批次名称" prop="batchName" min-width="150" show-overflow-tooltip v-if="columns[1].show" />
+        <el-table-column label="种质" prop="className" width="120" align="center" v-if="columns[2].show" />
+        <el-table-column label="所属温室" prop="pastureId" width="120" align="center" v-if="columns[3].show" />
+        <el-table-column label="种植面积(亩)" prop="cropArea" width="120" align="center" v-if="columns[4].show" />
+        <el-table-column label="负责人" prop="nickName" width="100" align="center" v-if="columns[5].show" />
+        <el-table-column label="开始时间" prop="startTime" width="120" align="center" v-if="columns[6].show" />
+        <el-table-column label="状态" prop="status" width="100" align="center" v-if="columns[7].show">
+          <template #default="scope">
+            <el-tag v-if="scope.row.status === '0'" type="success">进行中</el-tag>
+            <el-tag v-else-if="scope.row.status === '1'" type="info">已完成</el-tag>
+            <el-tag v-else-if="scope.row.status === '2'" type="danger">已取消</el-tag>
+            <el-tag v-else>{{ scope.row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" prop="createTime" width="180" align="center" v-if="columns[8].show" />
+        <el-table-column label="操作" width="200" align="center" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="handleDetail(scope.row)" v-auth="['agriculture:batch:query']">
+              <el-icon><View /></el-icon>详情
+            </el-button>
+            <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:batch:edit']">
+              <el-icon><EditPen /></el-icon>修改
+            </el-button>
+            <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:batch:remove']">
+              <el-icon><Delete /></el-icon>删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </template>
+    </art-table>
 
     <!-- 添加或修改批次对话框 -->
     <el-dialog :title="title" v-model="open" width="700px" append-to-body>
@@ -94,17 +82,38 @@
         <el-form-item label="批次名称" prop="batchName">
           <el-input v-model="form.batchName" placeholder="请输入批次名称" />
         </el-form-item>
-        <el-form-item label="种质ID" prop="classId">
-          <el-input-number v-model="form.classId" :min="1" placeholder="请输入种质ID" style="width: 100%" />
+        <el-form-item label="种植种质" prop="classId">
+          <el-select v-model="form.classId" placeholder="请选择种植种质" clearable style="width: 100%">
+            <el-option
+              v-for="item in classOptions"
+              :key="item.classId"
+              :label="item.className"
+              :value="item.classId"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="所属温室ID" prop="pastureId">
-          <el-input-number v-model="form.pastureId" :min="1" placeholder="请输入温室ID" style="width: 100%" />
+        <el-form-item label="所属温室" prop="pastureId">
+          <el-select v-model="form.pastureId" placeholder="请选择所属温室" clearable style="width: 100%">
+            <el-option
+              v-for="item in pastureOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="种植面积(亩)" prop="cropArea">
           <el-input-number v-model="form.cropArea" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="负责人ID" prop="responsiblePersonId">
-          <el-input-number v-model="form.responsiblePersonId" :min="1" placeholder="请输入负责人ID" style="width: 100%" />
+        <el-form-item label="负责人" prop="responsiblePersonId">
+          <el-select v-model="form.responsiblePersonId" placeholder="请选择负责人" clearable style="width: 100%">
+            <el-option
+              v-for="item in userOptions"
+              :key="item.userId"
+              :label="item.nickName"
+              :value="item.userId"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="开始时间" prop="startTime">
           <el-date-picker
@@ -140,6 +149,9 @@
 <script setup lang="ts">
 import { Search, Refresh, Plus, Download, Document, EditPen, Delete, View } from '@element-plus/icons-vue'
 import { AgricultureCropBatchService } from '@/api/agriculture/cropBatchApi'
+import { AgricultureClassService } from '@/api/agriculture/classApi'
+import { AgriculturePastureService } from '@/api/agriculture/pastureApi'
+import { UserService } from '@/api/system/userApi'
 import { ref, reactive, onMounted } from 'vue'
 import { resetForm } from '@/utils/utils'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -155,15 +167,45 @@ const loading = ref(true)
 const total = ref(0)
 const title = ref('')
 const queryRef = ref()
+const searchFormRef = ref<FormInstance>()
 const batchRef = ref<FormInstance>()
+const classOptions = ref<any[]>([])
+const pastureOptions = ref<any[]>([])
+const userOptions = ref<any[]>([])
+
+const columns = reactive([
+  { name: '批次ID', show: true },
+  { name: '批次名称', show: true },
+  { name: '种质', show: true },
+  { name: '所属温室', show: true },
+  { name: '种植面积(亩)', show: true },
+  { name: '负责人', show: true },
+  { name: '开始时间', show: true },
+  { name: '状态', show: true },
+  { name: '创建时间', show: true }
+])
+
+const statusOptions = ref([
+  { label: '进行中', value: '0' },
+  { label: '已完成', value: '1' },
+  { label: '已取消', value: '2' }
+])
+
+const changeColumn = (list: any) => {
+  columns.forEach((col, index) => {
+    if (list[index]) {
+      col.show = list[index].show
+    }
+  })
+}
 
 const initialFormState = {
   batchId: null,
   batchName: '',
-  classId: null,
-  pastureId: null,
+  classId: undefined as number | undefined,
+  pastureId: undefined as number | undefined,
   cropArea: 0,
-  responsiblePersonId: null,
+  responsiblePersonId: undefined as number | undefined,
   startTime: '',
   status: '0',
   remark: ''
@@ -180,7 +222,8 @@ const queryParams = reactive({
 
 const rules = reactive({
   batchName: [{ required: true, message: '批次名称不能为空', trigger: 'blur' }],
-  pastureId: [{ required: true, message: '所属温室ID不能为空', trigger: 'blur' }],
+  classId: [{ required: true, message: '种植种质不能为空', trigger: 'change' }],
+  pastureId: [{ required: true, message: '所属温室不能为空', trigger: 'change' }],
   cropArea: [{ required: true, message: '种植面积不能为空', trigger: 'blur' }]
 })
 
@@ -196,10 +239,12 @@ const getList = async () => {
 }
 
 /** 搜索按钮操作 */
-const handleQuery = () => {
+const search = () => {
   queryParams.pageNum = 1
   getList()
 }
+
+const handleQuery = search
 
 /** 每页条数改变 */
 const handleSizeChange = (size: number) => {
@@ -296,30 +341,74 @@ const reset = () => {
   Object.assign(form, initialFormState)
 }
 
+/** 获取种植列表 */
+const getClassList = async () => {
+  const res = await AgricultureClassService.listClass({})
+  if (res.code === 200) {
+    classOptions.value = res.rows || []
+  }
+}
+
+/** 获取温室列表 */
+const getPastureList = async () => {
+  const res = await AgriculturePastureService.listPasture({ pageNum: 1, pageSize: 1000 })
+  if (res.code === 200) {
+    pastureOptions.value = res.rows || []
+  }
+}
+
+/** 获取用户列表 */
+const getUserList = async () => {
+  try {
+    // 先查询第一页，获取总数
+    const firstRes = await UserService.listUser({ pageNum: 1, pageSize: 100 })
+    if (firstRes.code === 200) {
+      const total = firstRes.total || 0
+      const firstPageRows = firstRes.rows || []
+      
+      // 如果总数小于等于100，直接使用第一页数据
+      if (total <= 100) {
+        userOptions.value = firstPageRows
+        return
+      }
+      
+      // 如果总数大于100，需要分页查询所有数据
+      const allUsers = [...firstPageRows]
+      const totalPages = Math.ceil(total / 100)
+      
+      // 并发查询剩余页
+      const promises = []
+      for (let page = 2; page <= totalPages; page++) {
+        promises.push(UserService.listUser({ pageNum: page, pageSize: 100 }))
+      }
+      
+      const results = await Promise.all(promises)
+      results.forEach((res: any) => {
+        if (res.code === 200 && res.rows) {
+          allUsers.push(...res.rows)
+        }
+      })
+      
+      userOptions.value = allUsers
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    ElMessage.error('获取用户列表失败')
+  }
+}
+
 // 初始化
 onMounted(() => {
   getList()
+  getClassList()
+  getPastureList()
+  getUserList()
 })
 </script>
 
 <style lang="scss" scoped>
 .page-content {
   padding: 20px;
-}
-
-.search-row {
-  .button-col {
-    :deep(.el-form-item) {
-      margin-bottom: 0;
-      
-      .el-form-item__content {
-        display: flex;
-        gap: 10px;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-      }
-    }
-  }
 }
 </style>
 
