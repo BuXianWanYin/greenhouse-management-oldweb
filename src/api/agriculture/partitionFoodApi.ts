@@ -1,5 +1,5 @@
 import request from '@/utils/http'
-import { AgriculturePartitionFoodInfoResult, AgriculturePartitionFoodListPageResult, TraceDetailResult } from '@/types/agriculture/partitionFood'
+import { AgriculturePartitionFoodInfoResult, AgriculturePartitionFoodListPageResult } from '@/types/agriculture/partitionFood'
 import { CodeMsgResult } from '@/types/axios'
 
 // 分区食品 采摘
@@ -10,16 +10,6 @@ export class partitionFoodService {
             url: '/agriculture/partitionFood/list',
             params: query
         })
-    }
-
-    // 查询溯源详情（分区、大棚、批次任务、环境数据等）传递 traceId 和 firstTraceTime
-    static getTraceDetail(traceId: string, firstTraceTime?: string) {
-        const params: any = { traceId };
-        if (firstTraceTime) params.firstTraceTime = firstTraceTime;
-        return request.get<TraceDetailResult>({
-            url: '/agriculture/partitionFood/traceDetail',
-            params
-        });
     }
     
     // 查询分区食品 采摘详细

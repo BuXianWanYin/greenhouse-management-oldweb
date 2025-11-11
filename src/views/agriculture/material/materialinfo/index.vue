@@ -5,8 +5,8 @@
       <el-row :gutter="20">
         <!-- 农资名称搜索项 -->
         <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item label="农资名称" prop="materialName">
-            <el-input placeholder="请输入农资名称" v-model="queryParams.materialName" @keyup.enter="handleQuery">
+          <el-form-item label="农资名称" prop="resourceName">
+            <el-input placeholder="请输入农资名称" v-model="queryParams.resourceName" @keyup.enter="handleQuery">
               <template #prefix>
                 <el-icon><Goods /></el-icon>
               </template>
@@ -22,10 +22,10 @@
           <el-button @click="resetForm(queryRef)" v-ripple>
             <el-icon><Refresh /></el-icon>重置
           </el-button>
-          <el-button @click="handleAdd" v-auth="['agriculture:material:add']" v-ripple>
+          <el-button @click="handleAdd" v-auth="['agriculture:resource:add']" v-ripple>
             <el-icon><Plus /></el-icon>新增
           </el-button>
-          <el-button @click="handleExport" v-auth="['agriculture:material:export']" v-ripple>
+          <el-button @click="handleExport" v-auth="['agriculture:resource:export']" v-ripple>
             <el-icon><Download /></el-icon>导出
           </el-button>
         </el-col>
@@ -34,16 +34,16 @@
     <!-- 搜索栏结束 -->
 
     <el-row :gutter="8">
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in materialList" :key="item.materialId"
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in resourceList" :key="item.resourceId"
         style="margin-bottom: 8px;">
         <el-card shadow="hover" class="material-card">
           <div class="card-content">
             <h3 class="card-title">
               <span class="title-label">农资名称</span>
-              <span class="title-name">{{ item.materialName }}</span>
+              <span class="title-name">{{ item.resourceName }}</span>
             </h3>
-            <div class="card-image-container" v-if="item.materialImage">
-              <img :src="item.materialImage" :alt="item.materialName" class="card-image" />
+            <div class="card-image-container" v-if="item.resourceImage">
+              <img :src="item.resourceImage" :alt="item.resourceName" class="card-image" />
             </div>
             <div class="card-image-placeholder" v-else>
               <el-icon class="placeholder-icon"><PictureFilled /></el-icon>
@@ -58,11 +58,11 @@
                 </div>
                 <div class="detail-item">
                   <el-icon><Document /></el-icon>
-                  <span>编码 : {{ item.materialCode }}</span>
+                  <span>编码 : {{ item.resourceCode }}</span>
                 </div>
                 <div class="detail-item">
                   <el-icon><ChatDotRound /></el-icon>
-                  <span>状态 : {{ item.status === '0' ? '菜' : '鱼' }}</span>
+                  <span>类型 : {{ getResourceTypeLabel(item.resourceType) }}</span>
                 </div>
                 <div class="detail-item">
                   <el-icon><ChatDotRound /></el-icon>
@@ -72,12 +72,12 @@
               
               <div class="card-actions">
                 <el-button type="primary" size="small" @click="handleUpdate(item)" 
-                  v-auth="['agriculture:material:edit']" class="action-button">
+                  v-auth="['agriculture:resource:edit']" class="action-button">
                   <el-icon><EditPen /></el-icon>
                   修改
                 </el-button>
                 <el-button type="danger" size="small" @click="handleDelete(item)"
-                  v-auth="['agriculture:material:remove']" class="action-button">
+                  v-auth="['agriculture:resource:remove']" class="action-button">
                   <el-icon><Delete /></el-icon>
                   删除
                 </el-button>
@@ -103,16 +103,21 @@
 
     <!-- 添加或修改农资信息对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form ref="materialRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="农资编码" prop="materialCode">
-          <el-input v-model="form.materialCode" placeholder="请输入农资编码" />
+      <el-form ref="resourceRef" :model="form" :rules="rules" label-width="80px">
+        <el-form-item label="农资编码" prop="resourceCode">
+          <el-input v-model="form.resourceCode" placeholder="请输入农资编码" />
         </el-form-item>
-        <el-form-item label="农资名称" prop="materialName">
-          <el-input v-model="form.materialName" placeholder="请输入农资名称" />
+        <el-form-item label="农资名称" prop="resourceName">
+          <el-input v-model="form.resourceName" placeholder="请输入农资名称" />
         </el-form-item>
-       
+        <el-form-item label="农资类型" prop="resourceType">
+          <el-select v-model="form.resourceType" placeholder="请选择农资类型" style="width: 100%">
+            <el-option label="物料" value="0" />
+            <el-option label="机械" value="1" />
+          </el-select>
+        </el-form-item>
 
-        <el-form-item label="农资图片" prop="materialImage">
+        <el-form-item label="农资图片" prop="resourceImage">
           <div class="el-top upload-container">
             <el-upload
               class="cover-uploader"
@@ -123,23 +128,17 @@
               :on-error="onError"
               :before-upload="beforeUpload"
             >
-              <div v-if="!form.materialImage" class="upload-placeholder">
+              <div v-if="!form.resourceImage" class="upload-placeholder">
                 <el-icon class="upload-icon"><Plus /></el-icon>
                 <div class="upload-text">点击上传图片</div>
               </div>
-              <img v-else :src="form.materialImage" class="cover-image" />
+              <img v-else :src="form.resourceImage" class="cover-image" />
             </el-upload>
           </div>
         </el-form-item>
 
         <el-form-item label="计量单位" prop="measureUnit">
           <el-input v-model="form.measureUnit" placeholder="请输入计量单位" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="form.status" placeholder="请选择(0是菜,1是鱼)" style="width: 100%">
-            <el-option label="菜" :value="0" />
-            <el-option label="鱼" :value="1" />
-          </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />
@@ -177,13 +176,13 @@ let { accessToken } = userStore
 const uploadHeaders = { Authorization: accessToken }
 // 上传路径
 const uploadImageUrl = `${import.meta.env.VITE_API_BASE_URL}/common/upload`
-import { AgricultureMaterialService } from "@/api/agriculture/materialApi";
-import { ref, reactive, computed } from 'vue'
+import { AgricultureResourceService } from "@/api/agriculture/resourceApi";
+import { ref, reactive, computed, onMounted } from 'vue'
 import { resetForm } from '@/utils/utils'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { FormInstance } from 'element-plus'
-import { AgricultureMaterialResult } from '@/types/agriculture/material'
-const materialList = ref<AgricultureMaterialResult[]>([])
+import { AgricultureResourceResult } from '@/types/agriculture/resource'
+const resourceList = ref<AgricultureResourceResult[]>([])
 const open = ref(false);
 const loading = ref(true);
 const ids = ref([]);
@@ -191,16 +190,15 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 const queryRef = ref()
-const materialRef = ref<FormInstance>()
+const resourceRef = ref<FormInstance>()
 // 定义初始表单状态
 const initialFormState = {
-  materialId: null,
-  materialCode: null,
-  materialName: null,
-  materialTypeId: '',
-  materialImage: null,
+  resourceId: null,
+  resourceCode: null,
+  resourceName: null,
+  resourceType: '0', // 默认选择物料
+  resourceImage: null,
   measureUnit: null,
-  status: 0,
   orderNum: null,
   createBy: null,
   createTime: null,
@@ -213,44 +211,48 @@ const form = reactive({ ...initialFormState })
 const queryParams = reactive({
   pageNum: 1,
   pageSize: 8,
-  materialName: '',
-  materialTypeId: '',
-  status: '',
+  resourceName: '',
+  resourceType: '',
+  resourceCode: '',
 })
 const rules = reactive({
-  materialCode: [
+  resourceCode: [
     {
       required: true, message: "农资编码不能为空", trigger: "blur"
     }
   ],
-  materialName: [
+  resourceName: [
     {
       required: true, message: "农资名称不能为空", trigger: "blur"
+    }
+  ],
+  resourceType: [
+    {
+      required: true, message: "农资类型不能为空", trigger: "change"
     }
   ],
   measureUnit: [
     {
       required: true, message: "计量单位不能为空", trigger: "blur"
     }
-  ],
-  status: [
-    {
-      required: true, message: "状态不能为空", trigger: "change"
-    }
   ]
 })
 
-const statusLabel = computed(() => {
-  if (form.status === 0) return '菜'
-  return '鱼'
-})
+/** 获取农资类型标签 */
+const getResourceTypeLabel = (resourceType: string) => {
+  const typeMap: Record<string, string> = {
+    '0': '物料',
+    '1': '机械'
+  }
+  return typeMap[resourceType] || resourceType
+}
 
 /** 查询农资信息列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await AgricultureMaterialService.listMaterial(queryParams)
+  const res = await AgricultureResourceService.listResource(queryParams)
   if (res.code === 200) {
-    materialList.value = res.rows;
+    resourceList.value = res.rows;
     total.value = res.total;
     loading.value = false;
   }
@@ -258,7 +260,7 @@ const getList = async () => {
 
 // 上传成功后的处理函数
 const onSuccess = (response: any) => {
-    form.materialImage = response.url
+    form.resourceImage = response.url
     ElMessage.success(`图片上传成功 ${EmojiText[200]}`)
   }
 
@@ -308,6 +310,7 @@ const cancel = () => {
 const reset = () => {
   // 重置表单数据到初始状态
   Object.assign(form, initialFormState)
+  resourceRef.value?.resetFields()
 }
 
 /** 搜索按钮操作 */
@@ -330,7 +333,7 @@ const handleCurrentChange = (page: number) => {
 
 // 多选框选中数据
 const handleSelectionChange = (selection: any) => {
-  ids.value = selection.map((item: any) => item.materialId);
+  ids.value = selection.map((item: any) => item.resourceId);
   multiple.value = !selection.length;
 }
 
@@ -346,29 +349,27 @@ const handleUpdate = async (row: any) => {
   reset()
   open.value = true
   title.value = '修改农资信息'
-  // 将状态值转换为数字类型，确保下拉框能正确显示
-  const rowData = { ...row }
-  if (rowData.status !== undefined) {
-    rowData.status = rowData.status === '0' ? 0 : 1
+  const res = await AgricultureResourceService.getResource(row.resourceId)
+  if (res.code === 200) {
+    Object.assign(form, res.data)
   }
-  Object.assign(form, rowData)
 }
 
 
 /** 提交按钮 */
 const submitForm = async () => {
-  if (!materialRef.value) return
-  await materialRef.value.validate(async (valid) => {
+  if (!resourceRef.value) return
+  await resourceRef.value.validate(async (valid) => {
     if (valid) {
-      if (form.materialId != null) {
-        const res = await AgricultureMaterialService.updateMaterial(form)
+      if (form.resourceId != null) {
+        const res = await AgricultureResourceService.updateResource(form)
         if (res.code === 200) {
           ElMessage.success(res.msg)
           open.value = false;
           getList();
         }
       } else {
-        const res = await AgricultureMaterialService.addMaterial(form)
+        const res = await AgricultureResourceService.addResource(form)
         if (res.code === 200) {
           ElMessage.success(res.msg)
           open.value = false;
@@ -381,10 +382,10 @@ const submitForm = async () => {
 
 /** 删除按钮操作 */
 const handleDelete = async (row: any) => {
-  const _materialIds = row.materialId || ids.value;
-  const Tr = await ElMessageBox.confirm('是否确认删除农资信息编号为"' + _materialIds + '"的数据项？')
+  const _resourceIds = row.resourceId || ids.value;
+  const Tr = await ElMessageBox.confirm('是否确认删除农资信息编号为"' + _resourceIds + '"的数据项？')
   if (Tr) {
-    const res = await AgricultureMaterialService.deleteMaterial(_materialIds)
+    const res = await AgricultureResourceService.deleteResource(_resourceIds)
     if (res.code === 200) {
       getList()
       ElMessage.success(res.msg)
@@ -397,7 +398,7 @@ import { downloadExcel } from '@/utils/utils'
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  downloadExcel(AgricultureMaterialService.exportExcel(queryParams))
+  downloadExcel(AgricultureResourceService.exportExcel(queryParams))
 }
 
 // 初始化

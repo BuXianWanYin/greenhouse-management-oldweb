@@ -71,11 +71,6 @@ function logOut() {
 
 // 验证本地存储数据并处理异常
 export function validateStorageData() {
-  // 溯源页面不需要验证存储数据
-  if (location.href.includes('/trace')) {
-    return true
-  }
-  
   if (location.href.includes('/login')) return true
 
   const schema = {

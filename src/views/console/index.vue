@@ -3,42 +3,50 @@
     <CardList :data-list="cardList"></CardList>
     <div class="column column2 analysis-dashboard">
       <TodaySales :sales-data="countList"></TodaySales>
-      <SalesOverview :mock-data="traceChartData" :growth-map="growthMap"></SalesOverview>
     </div>
     <div class="bottom-wrap art-custom-card" style="margin-bottom: 60px;">
-      <div>
+      <div class="intro-content">
         <h2 class="box-title">关于温室种植计划管理与人员分工系统</h2>
-        <p>{{ systemName }} 是一款基于区块链和人工智能的鱼菜共生智慧物链平台</p>
-        <p>集成了智能水质监测、鱼菜共生管理、区块链溯源、AI决策分析等核心功能，打造绿色循环农业生态</p>
-
-        <div class="button-wrap">
-          <!-- <div class="btn art-custom-card" @click="goPage(WEB_LINKS.GITHUB_HOME)">
-            <span>项目源码</span>
-            <i class="iconfont-sys">&#xe703;</i>
+        <p class="intro-text">{{ systemName }} 是一款专业的温室种植计划管理与人员分工系统</p>
+        <p class="intro-text">系统集成了种植计划管理、批次任务管理、人员分工、作物管理、环境监测等核心功能，助力温室农业智能化管理</p>
+        
+        <div class="feature-list">
+          <div class="feature-item">
+            <el-icon class="feature-icon"><Document /></el-icon>
+            <div class="feature-content">
+              <h3>种植计划管理</h3>
+              <p>支持年度计划、季度计划、轮作计划等多种计划类型，实现全周期种植规划</p>
+            </div>
           </div>
-          <div class="btn art-custom-card" @click="goPage(WEB_LINKS.GITHUB_HOME)">
-            <span>技术文档</span>
-            <i class="iconfont-sys">&#xe703;</i>
+          <div class="feature-item">
+            <el-icon class="feature-icon"><UserFilled /></el-icon>
+            <div class="feature-content">
+              <h3>人员分工管理</h3>
+              <p>灵活的人员分配机制，确保每个任务都有明确的责任人</p>
+            </div>
           </div>
-          <div class="btn art-custom-card" @click="goPage(WEB_LINKS.GITHUB_HOME)">
-            <span>使用指南</span>
-            <i class="iconfont-sys">&#xe703;</i>
+          <div class="feature-item">
+            <el-icon class="feature-icon"><Crop /></el-icon>
+            <div class="feature-content">
+              <h3>作物信息管理</h3>
+              <p>完善的作物种质库管理，支持作业流程配置和智能分析</p>
+            </div>
           </div>
-          <div class="btn art-custom-card" @click="goPage(WEB_LINKS.GITHUB_HOME)">
-            <span>联系我们</span>
-            <i class="iconfont-sys">&#xe703;</i>
-          </div> -->
-          <img src="@imgs/3d/fish-over.png" width="600" height="250"></img>
+          <div class="feature-item">
+            <el-icon class="feature-icon"><Monitor /></el-icon>
+            <div class="feature-content">
+              <h3>环境监测</h3>
+              <p>实时监测温室环境数据，为种植决策提供科学依据</p>
+            </div>
+          </div>
         </div>
       </div>
-      <img class="right-img" src="@imgs/draw/draw1.png" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import CardList from './widget/CardList.vue'
-import SalesOverview from './widget/SalesOverview.vue'
 import TodaySales from './widget/TodaySales.vue'
 import { useSettingStore } from '@/store/modules/setting'
 import { useCommon } from '@/composables/useCommon'
@@ -46,12 +54,11 @@ import { useSystemInfo } from '@/composables/useSystemInfo'
 import { WEB_LINKS } from '@/utils/links'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { Document, UserFilled, Crop, Monitor } from '@element-plus/icons-vue'
 import AgricultureConsoleService from '@/api/agriculture/consoleApi'
 import type {
   ConsoleTotalInfo,
-  ConsoleToTalData,
-  TraceTotalChartData,
-  TraceTotalChartItem
+  ConsoleToTalData
 } from '@/types/agriculture/console'
 import event from '@/utils/event'
 
@@ -84,16 +91,6 @@ useCommon().scrollToTop()
 const cardList = ref<ConsoleTotalInfo[]>([])
 // 批量任务统计数据
 const countList = ref<ConsoleTotalInfo[]>([])
-// 溯源统计图表数据，供 SalesOverview 组件使用
-const traceChartData = ref<{
-  week: { xAxis: string[]; fish: number[]; vegetable: number[] }
-  month: { xAxis: string[]; fish: number[]; vegetable: number[] }
-  year: { xAxis: string[]; fish: number[]; vegetable: number[]; fullLabels?: string[] }
-}>({
-  week: { xAxis: [], fish: [], vegetable: [] },
-  month: { xAxis: [], fish: [], vegetable: [] },
-  year: { xAxis: [], fish: [], vegetable: [], fullLabels: [] }
-})
 
 // 获取农业统计卡片数据
 const getCardList = async () => {
@@ -107,75 +104,16 @@ const getCountList = async () => {
   countList.value = res.data
 }
 
-// 获取溯源统计数据，并转换为 SalesOverview 组件所需格式
-const getTraceTotal = async () => {
-  const res = await AgricultureConsoleService.listTraceTotal()
-  setTraceTotal(res.data)
-}
-
-const setTraceTotal = (data: any) => {
-  // 解构 week, month, year 数据
-  const { week, month, year } = data as unknown as TraceTotalChartData
-  // 转换为 ECharts 所需格式
-  traceChartData.value = {
-    week: {
-      xAxis: week.map((item: TraceTotalChartItem) => item.time.substring(5)), // 取日期后缀
-      fish: week.map((item: TraceTotalChartItem) => item.fishCount),
-      vegetable: week.map((item: TraceTotalChartItem) => item.cuisineCount)
-    },
-    month: {
-      xAxis: month.map((item: TraceTotalChartItem) => item.time.substring(5)),
-      fish: month.map((item: TraceTotalChartItem) => item.fishCount),
-      vegetable: month.map((item: TraceTotalChartItem) => item.cuisineCount)
-    },
-    year: {
-      xAxis: year.map((item: TraceTotalChartItem) => `${new Date(item.time).getMonth() + 1}月`), // 转换为“X月”
-      fish: year.map((item: TraceTotalChartItem) => item.fishCount),
-      vegetable: year.map((item: TraceTotalChartItem) => item.cuisineCount),
-      fullLabels: year.map((item: TraceTotalChartItem) => {
-        const date = new Date(item.time)
-        return `${date.getFullYear()}年${date.getMonth() + 1}月`
-      })
-    }
-  }
-
-  growthMap.value = {
-    week: formatGrowthRate(data.weekGrowth?.weekGrowth) || '+0%',
-    month: formatGrowthRate(data.monthGrowth?.monthGrowth) || '+0%',
-    year: formatGrowthRate(data.yearGrowth?.yearGrowth) || '+0%'
-  }
-}
-
-// 处理增长率数据，去掉小数部分
-const formatGrowthRate = (growthStr: string) => {
-  if (!growthStr) return '+0%'
-  // 提取数字部分，去掉小数
-  const match = String(growthStr).match(/^([+-]?\d+)/)
-  if (match) {
-    return match[1] + '%'
-  }
-  return '+0%'
-}
-
 // 监听全局 event 总线，实时更新统计数据
 event.on('message', (data: ConsoleToTalData) => {
   cardList.value = data.agriculture
   countList.value = data.batchTask
-  setTraceTotal(data.traceTotal)
-})
-
-// 增长率数据，传递给 SalesOverview 组件
-const growthMap = ref({
-  week: '+0%',
-  month: '+0%',
-  year: '+0%'
 })
 
 // 页面挂载时获取所有统计数据
 onMounted(() => {
   getCardList()
   getCountList()
-  getTraceTotal()
 })
 </script>
 
@@ -239,50 +177,80 @@ onMounted(() => {
 
   .bottom-wrap {
     box-sizing: border-box;
-    display: flex;
-    justify-content: space-between;
-    height: 300px;
-    padding: 20px;
+    padding: 30px;
     margin-top: var(--console-margin);
     background: var(--art-main-bg-color);
+    min-height: 400px;
 
-    h2 {
-      margin-top: 10px;
-      font-size: 20px;
-      font-weight: 500;
-    }
+    .intro-content {
+      max-width: 1200px;
+      margin: 0 auto;
 
-    p {
-      margin-top: 5px;
-      font-size: 14px;
-      color: var(--art-gray-600);
-    }
+      h2 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--art-gray-900);
+      }
 
-    .button-wrap {
-      display: flex;
-      flex-wrap: wrap;
-      width: 600px;
-      margin-top: 15px;
+      .intro-text {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--art-gray-700);
+      }
 
-      .btn {
-        display: flex;
-        justify-content: space-between;
-        width: 240px;
-        height: 50px;
-        padding: 0 15px;
-        margin: 0 15px 15px 0;
-        font-size: 14px;
-        line-height: 50px;
-        color: var(--art-gray-800);
-        text-align: center;
-        cursor: pointer;
-        background: var(--art-bg-color);
-        border-radius: calc(var(--custom-radius) / 2 + 2px) !important;
-        transition: all 0.3s;
+      .feature-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-top: 30px;
 
-        &:hover {
-          box-shadow: 0 5px 10px rgb(0 0 0 / 5%);
-          transform: translateY(-4px);
+        .feature-item {
+          display: flex;
+          align-items: flex-start;
+          padding: 20px;
+          background: var(--art-bg-color);
+          border-radius: 12px;
+          transition: all 0.3s;
+          border: 1px solid var(--art-border-color);
+
+          &:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+          }
+
+          .feature-icon {
+            flex-shrink: 0;
+            width: 48px;
+            height: 48px;
+            margin-right: 16px;
+            padding: 12px;
+            font-size: 24px;
+            color: var(--el-color-primary);
+            background: var(--el-color-primary-light-9);
+            border-radius: 12px;
+          }
+
+          .feature-content {
+            flex: 1;
+
+            h3 {
+              margin: 0 0 8px 0;
+              font-size: 16px;
+              font-weight: 600;
+              color: var(--art-gray-900);
+            }
+
+            p {
+              margin: 0;
+              font-size: 14px;
+              line-height: 1.5;
+              color: var(--art-gray-600);
+            }
+          }
         }
       }
     }
@@ -330,19 +298,13 @@ onMounted(() => {
     .bottom-wrap {
       height: auto;
       margin-top: 15px;
+      padding: 20px;
 
-      .button-wrap {
-        width: 470px;
-        margin-top: 20px;
-
-        .btn {
-          width: 180px;
+      .intro-content {
+        .feature-list {
+          grid-template-columns: 1fr;
+          gap: 15px;
         }
-      }
-
-      .right-img {
-        width: 300px;
-        height: 230px;
       }
     }
   }
@@ -395,20 +357,17 @@ onMounted(() => {
     .bottom-wrap {
       height: auto;
       margin-top: 15px;
+      padding: 20px;
 
-      .button-wrap {
-        width: 100%;
-        margin-top: 20px;
+      .intro-content {
+        .feature-list {
+          grid-template-columns: 1fr;
+          gap: 15px;
 
-        .btn {
-          width: 190px;
-          height: 50px;
-          line-height: 50px;
+          .feature-item {
+            padding: 15px;
+          }
         }
-      }
-
-      .right-img {
-        display: none;
       }
     }
   }
@@ -440,15 +399,23 @@ onMounted(() => {
     }
 
     .bottom-wrap {
-      padding: 0 15px;
+      padding: 15px;
 
-      .button-wrap {
-        width: 100%;
-        margin-top: 20px;
+      .intro-content {
+        .feature-list {
+          grid-template-columns: 1fr;
+          gap: 12px;
 
-        .btn {
-          width: 100%;
-          margin-right: 0;
+          .feature-item {
+            padding: 12px;
+            flex-direction: column;
+            text-align: center;
+
+            .feature-icon {
+              margin-right: 0;
+              margin-bottom: 12px;
+            }
+          }
         }
       }
     }

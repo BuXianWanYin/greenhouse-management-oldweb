@@ -68,28 +68,28 @@
           <el-input v-model="form.jobName" placeholder="请输入作业名称" />
         </el-form-item>
         <el-form-item label="周期单位" prop="cycleUnit">
-          <el-select v-model="form.cycleUnit" clearable placeholder="请选择作业周期单位">
-            <el-option
-              v-for="dict in agricultureCycleType"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            ></el-option>
+          <el-select v-model="form.cycleUnit" clearable placeholder="请选择作业周期单位" style="width: 100%">
+            <el-option label="周" value="0" />
+            <el-option label="天" value="1" />
           </el-select>
         </el-form-item>
-        <el-form-item label="起始周期" prop="jobStart">
+        <el-form-item :label="startLabel" prop="jobStart">
           <el-input-number
             v-model="form.jobStart"
             controls-position="right"
             :min="0"
+            :precision="0"
+            :placeholder="`请输入${startLabel}`"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="结束周期" prop="jobFinish">
+        <el-form-item :label="endLabel" prop="jobFinish">
           <el-input-number
             v-model="form.jobFinish"
             controls-position="right"
             :min="0"
+            :precision="0"
+            :placeholder="`请输入${endLabel}`"
             style="width: 100%"
           />
         </el-form-item>
@@ -105,7 +105,7 @@
 </template>
 <script setup lang="ts">
   import { AgricultureJobService } from '@/api/agriculture/jobApi'
-  import { ref, reactive } from 'vue'
+  import { ref, reactive, computed } from 'vue'
   import { resetForm } from '@/utils/utils'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { FormInstance } from 'element-plus'
@@ -135,10 +135,10 @@
   const initialFormState = {
     jobId: null,
     classId: prop.classId,
-    jobName: null,
-    cycleUnit: '0',
-    jobStart: 0,
-    jobFinish: 0,
+    jobName: '', // 作业任务名称
+    cycleUnit: '0', // 作业周期单位（0代表周 1代表天），默认选择周
+    jobStart: null as number | null, // 起始周/天
+    jobFinish: null as number | null, // 结束周/天
     status: null,
     createBy: null,
     createTime: null,
@@ -147,6 +147,16 @@
     remark: null
   }
   const form = reactive({ ...initialFormState })
+  
+  // 根据周期单位动态生成标签
+  const startLabel = computed(() => {
+    return form.cycleUnit === '1' ? '起始天' : form.cycleUnit === '0' ? '起始周' : '起始周/天'
+  })
+  
+  const endLabel = computed(() => {
+    return form.cycleUnit === '1' ? '结束天' : form.cycleUnit === '0' ? '结束周' : '结束周/天'
+  })
+  
   const queryParams = reactive({
     pageNum: 1,
     pageSize: 5,
@@ -161,17 +171,56 @@
         trigger: 'blur'
       }
     ],
+    cycleUnit: [
+      {
+        required: true,
+        message: '作业周期单位不能为空',
+        trigger: 'change'
+      }
+    ],
     jobStart: [
       {
         required: true,
-        message: '起始周/天不能为空',
+        validator: (rule: any, value: any, callback: any) => {
+          const unitText = form.cycleUnit === '1' ? '天' : form.cycleUnit === '0' ? '周' : '周/天'
+          if (value === null || value === undefined || value === '') {
+            callback(new Error(`起始${unitText}不能为空`))
+            return
+          }
+          const numValue = Number(value)
+          if (isNaN(numValue) || numValue < 0) {
+            callback(new Error(`起始${unitText}必须大于等于0`))
+          } else {
+            callback()
+          }
+        },
         trigger: 'blur'
       }
     ],
     jobFinish: [
       {
         required: true,
-        message: '结束周/天不能为空',
+        validator: (rule: any, value: any, callback: any) => {
+          const unitText = form.cycleUnit === '1' ? '天' : form.cycleUnit === '0' ? '周' : '周/天'
+          if (value === null || value === undefined || value === '') {
+            callback(new Error(`结束${unitText}不能为空`))
+            return
+          }
+          const numValue = Number(value)
+          if (isNaN(numValue) || numValue < 0) {
+            callback(new Error(`结束${unitText}必须大于等于0`))
+            return
+          }
+          if (form.jobStart !== null && form.jobStart !== undefined) {
+            if (numValue < Number(form.jobStart)) {
+              callback(new Error(`结束${unitText}不能小于起始${unitText}`))
+            } else {
+              callback()
+            }
+          } else {
+            callback()
+          }
+        },
         trigger: 'blur'
       }
     ]

@@ -16,13 +16,6 @@ class AgricultureConsoleService {
       url: '/agriculture/console/batchTask'
     })
   }
-
-  /** 查询溯源统计信息 */
-  static listTraceTotal(){
-    return request.get<ConsoleListResult>({
-      url:'/agriculture/console/traceTotal'
-    })
-  }
 }
 
 export default AgricultureConsoleService

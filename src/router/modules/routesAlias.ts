@@ -21,6 +21,5 @@ export enum RoutesAlias {
   AuthRole = '/system/user/authRole', // 用户授权角色页面
   JobLog = '/monitor/job/log', // 调度日志页面
   OutsideIframe = '/outside/iframe', // 外部 iframe 页面
-  Trace = '/trace/index', // 溯源页面
   ChangeLog = '/log/ChangeLog' // 更新日志页面
 }

@@ -123,15 +123,6 @@ export interface BatchTaskDetail {
     sensorAlertList?: any[];
 }
 
-// 溯源详情响应
-export interface TraceDetailResult {
-    foodInfo: FoodInfo
-    cropBatch: CropBatch
-    pastureInfo: PastureInfo
-    batchTaskDetailList: BatchTaskDetail[]
-}
-
-
 export type AgriculturePartitionFoodListPageResult = BasePageResult<AgriculturePartitionFoodResult>
 export type AgriculturePartitionFoodListResult = BaseArrayResult<AgriculturePartitionFoodResult>
 export type AgriculturePartitionFoodInfoResult = BaseObjectResult<AgriculturePartitionFoodResult>

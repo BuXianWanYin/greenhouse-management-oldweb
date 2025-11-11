@@ -139,13 +139,6 @@ const staticRoutes: AppRouteRecordRaw[] = [
         meta: { title: 'iframe', noLogin: true }
       }
     ]
-  },
-  // 溯源页面
-  {
-    path: '/trace',
-    name: 'Trace',
-    component: () => import('@/views/trace/index.vue'),
-    meta: { title: '溯源', noLogin: true, isHideTab: true, setTheme: true }
   }
 ]
 

@@ -212,7 +212,7 @@
                   <div class="qr-code">
                     <img :src="item.barcode" alt="二维码" />
                   </div>
-                  <div class="id-code">ID溯源码: {{ item.id }}</div>
+                  <div class="id-code">ID: {{ item.id }}</div>
                 </div>
                 <!-- 中间信息区域 -->
                 <div class="info-section">

@@ -4,14 +4,14 @@
     <div class="card-header">
       <div class="header-content">
         <div class="section-name">
-          种质信息
+          作物信息
         </div>
         <div class="name">{{ className }}</div>
       </div>
     </div>
 
     <div class="image">
-      <img :src="classImage" alt="种质图片" />
+      <img :src="classImage" alt="作物图片" />
     </div>
 
     <div class="card-content">
@@ -26,7 +26,7 @@
             <div class="info-item">
               <el-icon><Collection /></el-icon>
               <span class="label">{{ typeLabel }}</span>
-              <span class="value">{{ classTypeName }}</span>
+              <span class="value">{{ categoryName }}</span>
             </div>
           </div>
         </div>
@@ -52,8 +52,18 @@
 
   const props = defineProps<Props>()
 
-  const nameLabel = computed(() => props.classType === '0' ? '水产名称：' : '作物名称：')
-  const typeLabel = computed(() => props.classType === '0' ? '水产类型：' : '作物类型：')
+  const nameLabel = computed(() => '作物名称：')
+  const typeLabel = computed(() => '作物类型：')
+  
+  // 将类别英文值转换为中文显示
+  const categoryName = computed(() => {
+    const categoryMap: Record<string, string> = {
+      'fruit': '瓜果',
+      'vegetable': '蔬菜',
+      'other': '其他'
+    }
+    return categoryMap[props.classTypeName] || props.classTypeName
+  })
 </script>
 
 <style lang="scss" scoped>

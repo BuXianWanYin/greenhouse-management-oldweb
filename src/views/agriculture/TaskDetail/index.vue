@@ -112,32 +112,19 @@
                         </template>
                         <cost-employee ref="costEmployeeRef" :task-id="taskId" :task-employee-list="selectedEmployeeObjects" :current-user="currentUser" @log="fetchLogList"></cost-employee>
                     </el-tab-pane>
-                    <el-tab-pane name="costMachine">
-                        <template #label>
-                            <span class="custom-tabs-label">
-                                <el-icon><Van /></el-icon>
-                                <span>机械工时</span>
-                            </span>
-                        </template>
-                        <cost-machine 
-                         :key="isVegetable + '-' + taskId"  
-                         :task-id="taskId" 
-                         :current-user="currentUser" 
-                         :is-vegetable="isVegetable"
-                         @log="fetchLogList"></cost-machine>
-                    </el-tab-pane>
                     <el-tab-pane name="costMaterial">
                         <template #label>
                             <span class="custom-tabs-label">
                                 <el-icon><Food /></el-icon>
-                                <span>{{ isVegetable ? '农资使用' : '饵料投喂' }}</span>
+                                <span>农资使用</span>
                             </span>
                         </template>
                         <cost-material
-                         :key="isVegetable + '-' + taskId"  
+                         :key="taskId"  
                          :task-id="taskId"
                          :current-user="currentUser" 
-                         :is-vegetable="isVegetable"
+                         :batch-id="form.batchId || props.batchId"
+                         :task-employee-list="selectedEmployeeObjects"
                          @log="fetchLogList"></cost-material>
                     </el-tab-pane>
                     <el-tab-pane name="annex">
@@ -202,14 +189,13 @@ import { AgricultureTaskEmployeeService } from "@/api/agriculture/taskEmployeeAp
 import { AgricultureCropBatchService } from "@/api/agriculture/cropBatchApi";
 import { AgricultureCropBatchTaskService } from "@/api/agriculture/cropBatchTaskApi";     
 import { ref, reactive, watch, onMounted, computed } from 'vue'
-import { Document, User, Van, Paperclip, Plus, VideoCamera, Food,Delete } from '@element-plus/icons-vue'
+import { Document, User, Paperclip, Plus, VideoCamera, Food, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import RadioSelect from "./RadioSelect.vue"
 import CalendarSelect from "./CalendarSelect.vue"
 import MultipleSelect from "./MultipleSelect.vue"
 import StatusSelect from "./StatusSelect.vue"
 import CostEmployee from "./CostEmployee.vue"
-import CostMachine from './CostMachine.vue'
 import CostMaterial from './CostMaterial.vue'   
 import { useUserStore } from '@/store/modules/user'
 import { DictDataService } from '@/api/system/dict/dataApi'
@@ -230,7 +216,6 @@ const props = defineProps({
     batchId: {
         type: Number
     },
-    fishDish: { type: Number, default: 0 } // 新增
 })
 
 // 响应式状态
@@ -249,11 +234,6 @@ const userIdToTaskEmployeeId = ref({})
 const needRefresh = ref(false)
 const userInfo = computed(() => userStore.info)
 
-// 计算属性：判断是否为蔬菜类型
-const isVegetable = computed(() => {
-    // 根据 fishDish 属性判断：0为鱼类，1为蔬菜
-    return props.fishDish === 1
-})
 
 const form = reactive({
     taskId: null,
@@ -279,8 +259,7 @@ const form = reactive({
     userName: null,
     batchHead: null,
     batchHeadName: null,
-    vegetableId: null, // 新增：蔬菜ID
-    germplasmId: null // 新增：鱼类ID
+    vegetableId: null
 })
 
 const rules = {
@@ -354,7 +333,18 @@ const fetchUserList = async () => {
  */
 const fetchLogList = async () => {
     const response = await AgricultureTaskLogService.listLog({ taskId: props.taskId, pageNum: 1, pageSize: 1000 })
-    logList.value = response.rows
+    if (response.rows && response.rows.length > 0) {
+        // 按时间倒序排列（最新的在前）
+        const sortedLogs = [...response.rows].sort((a, b) => {
+            const timeA = new Date(a.createTime || 0).getTime()
+            const timeB = new Date(b.createTime || 0).getTime()
+            return timeB - timeA // 倒序
+        })
+        // 只显示最近50条日志
+        logList.value = sortedLogs.slice(0, 50)
+    } else {
+        logList.value = []
+    }
 }
 /**
  * 字典
@@ -391,8 +381,7 @@ const resetForm = () => {
         userName: null,
         batchHead: null,
         batchHeadName: null,
-        vegetableId: null, // 新增：蔬菜ID
-        germplasmId: null // 新增：鱼类ID
+        vegetableId: null
     })
 }
 
@@ -430,7 +419,6 @@ const handleUpdate = async () => {
                     if (batchResponse.data) {
                         form.batchName = batchResponse.data.batchName
                         form.vegetableId = batchResponse.data.vegetableId
-                        form.germplasmId = batchResponse.data.germplasmId
                     }
                 }
                 console.log('更新后的form数据:', form)

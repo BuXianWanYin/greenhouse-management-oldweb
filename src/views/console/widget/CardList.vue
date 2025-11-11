@@ -1,13 +1,15 @@
 <template>
   <ul class="card-list" :style="{ marginTop: showWorkTab ? '0' : '10px' }">
     <li class="art-custom-card" v-for="(item, index) in dataList" :key="index">
-      <span class="des subtitle">{{ item.label }}</span>
+      <span class="des subtitle">{{ getDisplayLabel(item.label) }}</span>
       <span class="number box-title">
         <MoCountTo :num="item.value" :duration="800" :separator="2" />
-        <span v-if="item.label === '农场面积'" class="unit">亩</span>
-        <span v-if="item.label === '农场大棚'" class="unit">个</span>
-        <span v-if="item.label === '农场分区'" class="unit">块</span>
-        <span v-if="item.label === '农场种类'" class="unit">种</span>
+        <span v-if="item.label === '温室面积' || item.label === '总面积'" class="unit">亩</span>
+        <span v-if="item.label === '温室数量' || item.label === '大棚数量'" class="unit">个</span>
+        <span v-if="item.label === '分区数量' || item.label === '分区'" class="unit">块</span>
+        <span v-if="item.label === '作物种类' || item.label === '种质数量' || item.label === '农场作物' || item.label === '农场种类'" class="unit">种</span>
+        <span v-if="item.label === '计划数量' || item.label === '计划总数'" class="unit">个</span>
+        <span v-if="item.label === '任务数量' || item.label === '任务总数'" class="unit">个</span>
       </span>
       <div class="change-box">
         <span class="change-text">较上周</span>
@@ -34,6 +36,14 @@ const props = defineProps({
 
 const settingStore = useSettingStore()
 const showWorkTab = computed(() => settingStore.showWorkTab)
+
+// 标签显示转换：将"农场种类"转换为"农场作物"
+const getDisplayLabel = (label: string) => {
+  if (label === '农场种类') {
+    return '农场作物'
+  }
+  return label
+}
 </script>
 
 <style lang="scss" scoped>

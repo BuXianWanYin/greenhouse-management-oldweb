@@ -3,13 +3,17 @@
     <el-form :model="queryParams" ref="queryRef" label-width="82px">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item :label="`种类名称`" :prop="`className`">
-            <el-input placeholder="请输入种类名称" v-model="queryParams.className" @keyup.enter="handleQuery" />
+          <el-form-item :label="`作物名称`" :prop="`className`">
+            <el-input placeholder="请输入作物名称" v-model="queryParams.className" @keyup.enter="handleQuery" />
           </el-form-item>
         </el-col>
         <el-col :xs="24" :sm="12" :lg="6">
-          <el-form-item :label="`类型名称`" :prop="`classTypeName`">
-            <el-input placeholder="请输入类型名称" v-model="queryParams.classTypeName" @keyup.enter="handleQuery" />
+          <el-form-item :label="`类别`" :prop="`category`">
+            <el-select v-model="queryParams.category" clearable placeholder="请选择类别" style="width: 100%">
+              <el-option label="瓜果" value="fruit" />
+              <el-option label="蔬菜" value="vegetable" />
+              <el-option label="其他" value="other" />
+            </el-select>
           </el-form-item>
         </el-col>
         <div style="width: 12px"></div>
@@ -24,8 +28,8 @@
 
     <el-row :gutter="20">
       <el-col :xs="24" :sm="12" :md="6" v-for="item in classList" :key="item.classId" style="margin-bottom: 20px">
-        <class-card :class-name="item.className" :class-type-name="item.classTypeName" :class-image="item.classImage"
-          :class-type="item.classType">
+        <class-card :class-name="item.className" :class-type-name="item.category" :class-image="item.classImage"
+          :class-type="item.category">
           <template #button>
             <el-button type="primary" size="small" @click="handleUpdate(item)" class="action-button" v-ripple>
               <el-icon>
@@ -60,14 +64,18 @@
       :current-page="queryParams.pageNum" :page-size="queryParams.pageSize" @size-change="handleSizeChange"
       @current-change="handleCurrentChange" layout="prev, pager, next" style="float: right" />
 
-    <!-- 添加或修改种类信息对话框 -->
+    <!-- 添加或修改作物信息对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
       <el-form ref="classRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="种类名称" prop="className">
-          <el-input v-model="form.className" placeholder="请输入种类名称" />
+        <el-form-item label="作物名称" prop="className">
+          <el-input v-model="form.className" placeholder="请输入作物名称" />
         </el-form-item>
-        <el-form-item label="类别名称" prop="classTypeName">
-          <el-input v-model="form.classTypeName" placeholder="请输入类别名称" />
+        <el-form-item label="类别" prop="category">
+          <el-select v-model="form.category" clearable placeholder="请选择类别" style="width: 100%">
+            <el-option label="瓜果" value="fruit" />
+            <el-option label="蔬菜" value="vegetable" />
+            <el-option label="其他" value="other" />
+          </el-select>
         </el-form-item>
         <el-form-item label="图片" prop="classImage">
           <div class="el-top upload-container">
@@ -83,15 +91,6 @@
             </el-upload>
           </div>
         </el-form-item>
-        <el-form-item label="类型" prop="classType">
-          <el-select v-model="form.classType" clearable placeholder="请选择" style="width: 50%">
-            <el-option v-for="item in agricultureClassType" :key="item.value" :label="item.label" :value="item.value">
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="排序" prop="orderNum">
-          <el-input-number v-model="form.orderNum" controls-position="right" :min="0" style="width: 50%" />
-        </el-form-item>
         <el-form-item label="宣传语" prop="classDes">
           <el-input v-model="form.classDes" type="textarea" placeholder="请输入内容" />
         </el-form-item>
@@ -105,20 +104,20 @@
     </el-dialog>
 
     <el-dialog title="作业流程" v-model="jobOpen" width="40%" append-to-body>
-      <class-job :class-id="form.classId" :class-name="form.className" :class-type-name="form.classTypeName"
-        :class-type="form.classType" v-if="jobOpen" />
+      <class-job :class-id="form.classId" :class-name="form.className" :class-type-name="form.category"
+        :class-type="form.category" v-if="jobOpen" />
     </el-dialog>
 
     <el-dialog title="智能分析" v-model="reportOpen" width="80%" append-to-body>
       <class-report :class-id="form.classId" :class-name="form.className" :class-image="form.classImage"
-        :class-type-name="form.classTypeName" :class-type="form.classType" v-if="reportOpen" />
+        :class-type-name="form.category" :class-type="form.category" v-if="reportOpen" />
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { AgricultureClassService } from '@/api/agriculture/classApi'
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { resetForm } from '@/utils/utils'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { FormInstance } from 'element-plus'
@@ -149,12 +148,10 @@ import { EditPen, Delete, Connection, Cpu } from '@element-plus/icons-vue'
 const initialFormState = {
   classId: '',
   className: '',
-  classTypeName: '',
-  classType: '0',
+  category: '', // 类别（fruit=瓜果,vegetable=蔬菜,grain=粮食,other=其他）
   classImage: '',
   classDes: null,
   status: null,
-  orderNum: 0,
   createBy: null,
   createTime: null,
   updateBy: null,
@@ -166,27 +163,27 @@ const queryParams = reactive({
   pageNum: 1,
   pageSize: 8,
   className: '',
-  classTypeName: ''
+  category: '' // 类别筛选
 })
 const rules = reactive({
   className: [
     {
       required: true,
-      message: '种类名称不能为空',
+      message: '作物名称不能为空',
       trigger: 'blur'
     }
   ],
-  classTypeName: [
+  category: [
     {
       required: true,
-      message: '种类类别名称不能为空',
-      trigger: 'blur'
+      message: '类别不能为空',
+      trigger: 'change'
     }
   ],
   classImage: [
     {
       required: true,
-      message: '种类图片不能为空',
+      message: '作物图片不能为空',
       trigger: 'blur'
     }
   ]
@@ -219,7 +216,7 @@ const beforeUpload = (file: File) => {
   return true
 }
 
-/** 查询种类信息列表 */
+/** 查询作物信息列表 */
 const getList = async () => {
   loading.value = true
   const res = await AgricultureClassService.listClass(queryParams)
@@ -280,14 +277,14 @@ const handleCurrentChange = (page: number) => {
 const handleAdd = () => {
   reset()
   open.value = true
-  title.value = '添加种类信息'
+  title.value = '添加作物信息'
 }
 
 /** 修改按钮操作 */
 const handleUpdate = async (row: any) => {
   reset()
   open.value = true
-  title.value = '修改种类信息'
+  title.value = '修改作物信息'
   Object.assign(form, row)
 }
 
@@ -318,7 +315,7 @@ const submitForm = async () => {
 /** 删除按钮操作 */
 const handleDelete = async (row: any) => {
   const _classIds = row.classId || ids.value
-  const Tr = await ElMessageBox.confirm('是否确认删除种类信息编号为"' + _classIds + '"的数据项？')
+  const Tr = await ElMessageBox.confirm('是否确认删除作物信息编号为"' + _classIds + '"的数据项？')
   if (Tr) {
     console.log(_classIds)
     const res = await AgricultureClassService.deleteClass(_classIds)
@@ -327,13 +324,6 @@ const handleDelete = async (row: any) => {
       ElMessage.success(res.msg)
     }
   }
-}
-
-import { useDict, DictType } from '@/utils/dict'
-const agricultureClassType = ref<DictType[]>([]) // 种类类型字典数据
-const getuseDict = async () => {
-  const { agriculture_class_type } = await useDict('agriculture_class_type')
-  agricultureClassType.value = agriculture_class_type
 }
 
 import { downloadExcel } from '@/utils/utils'
@@ -345,7 +335,6 @@ const handleExport = () => {
 // 初始化
 onMounted(() => {
   getList()
-  getuseDict()
 })
 </script>
 <style lang="scss" scoped>
