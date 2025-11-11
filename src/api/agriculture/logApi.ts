@@ -12,6 +12,13 @@ export class AgricultureTaskLogService {
         })
     }
 
+    // 根据任务ID查询批次任务日志列表
+    static listByTaskId(taskId: string | number) {
+        return request.get<AgricultureTaskLogListPageResult>({
+            url: `/agriculture/log/task/${taskId}`
+        })
+    }
+
     // 查询批次任务日志详细
     static getLog(logId: any) {
         return request.get<AgricultureTaskLogInfoResult>({

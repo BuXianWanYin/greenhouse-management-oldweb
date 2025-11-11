@@ -11,27 +11,48 @@
       <template #top>
         <el-form :model="queryParams" ref="searchFormRef" label-width="82px">
           <el-row :gutter="20">
-            <form-input
-              label="使用记录ID"
-              prop="usageId"
-              @keyup.enter="search"
-              v-model="queryParams.usageId"
-            />
-            <form-input
-              label="农资ID"
-              prop="resourceId"
-              @keyup.enter="search"
-              v-model="queryParams.resourceId"
-            />
             <el-col :xs="24" :sm="12" :lg="6">
-              <el-form-item label="使用日期" prop="usageDate">
+              <el-form-item label="农资" prop="resourceId">
+                <el-select v-model="queryParams.resourceId" filterable clearable placeholder="全部" style="width: 100%" @change="handleQuery">
+                  <el-option v-for="r in resourceList" :key="r.resourceId" :label="r.resourceName" :value="r.resourceId" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :lg="6">
+              <el-form-item label="批次" prop="batchId">
+                <el-select v-model="queryParams.batchId" filterable clearable placeholder="全部" style="width: 100%" @change="handleQuery">
+                  <el-option v-for="b in batchList" :key="b.batchId" :label="b.batchName" :value="b.batchId" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :lg="6">
+              <el-form-item label="任务" prop="taskId">
+                <el-select v-model="queryParams.taskId" filterable clearable placeholder="全部" style="width: 100%" @change="handleQuery">
+                  <el-option v-for="t in filteredTaskList" :key="t.taskId" :label="t.taskName" :value="t.taskId" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :lg="6">
+              <el-form-item label="类型" prop="usageType">
+                <el-select v-model="queryParams.usageType" clearable placeholder="全部" style="width: 100%" @change="handleQuery">
+                  <el-option label="领用" value="0" />
+                  <el-option label="消耗" value="1" />
+                  <el-option label="入库" value="2" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :lg="12">
+              <el-form-item label="日期" prop="dateRange">
                 <el-date-picker
-                  v-model="queryParams.usageDate"
-                  type="date"
-                  placeholder="选择使用日期"
+                  v-model="queryParams.dateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
                   format="YYYY-MM-DD"
                   value-format="YYYY-MM-DD"
                   style="width: 100%"
+                  @change="handleQuery"
                 />
               </el-form-item>
             </el-col>
@@ -56,7 +77,6 @@
     >
       <template #default>
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="使用记录ID" prop="usageId" width="120" v-if="columns[0].show" />
         <el-table-column label="农资名称" width="150" v-if="columns[1].show">
           <template #default="{ row }">
             {{ getResourceName(row.resourceId) }}
@@ -74,7 +94,11 @@
         </el-table-column>
         <el-table-column label="使用数量" prop="usageQuantity" width="120" align="center" v-if="columns[4].show" />
         <el-table-column label="计量单位" prop="measureUnit" width="100" align="center" v-if="columns[5].show" />
-        <el-table-column label="使用日期" prop="usageDate" width="120" align="center" v-if="columns[6].show" />
+        <el-table-column label="使用日期" prop="usageDate" width="120" align="center" v-if="columns[6].show">
+          <template #default="{ row }">
+            {{ (row.usageDate || '').split(' ')[0] }}
+          </template>
+        </el-table-column>
         <el-table-column label="使用类型" width="100" align="center" v-if="columns[7].show">
           <template #default="{ row }">
             {{ getUsageTypeLabel(row.usageType) }}
@@ -85,8 +109,8 @@
         <el-table-column label="创建时间" prop="createTime" width="180" align="center" v-if="columns[10].show" />
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:resourceusage:edit']">
-              <el-icon><EditPen /></el-icon>修改
+            <el-button link type="primary" @click="handleUpdate(scope.row)">
+              <el-icon><Document /></el-icon>详情
             </el-button>
             <el-button link type="danger" @click="handleDelete(scope.row)" v-auth="['agriculture:resourceusage:remove']">
               <el-icon><Delete /></el-icon>删除
@@ -96,20 +120,41 @@
       </template>
     </art-table>
 
-    <!-- 添加或修改农资使用记录对话框 -->
+    <!-- 添加或查看农资使用记录对话框（查看时只读） -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form ref="usageRef" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="农资ID" prop="resourceId">
-          <el-input-number v-model="form.resourceId" :min="1" placeholder="请输入农资ID" style="width: 100%" />
+        <el-form-item label="农资" prop="resourceId">
+          <el-select v-model="form.resourceId" placeholder="请选择农资" filterable style="width: 100%" :disabled="isViewMode">
+            <el-option
+              v-for="r in resourceList"
+              :key="r.resourceId"
+              :label="r.resourceName"
+              :value="r.resourceId"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="批次ID" prop="batchId">
-          <el-input v-model="form.batchId" placeholder="请输入批次ID" />
+        <el-form-item label="批次" prop="batchId">
+          <el-select v-model="form.batchId" placeholder="请选择批次" filterable style="width: 100%" @change="handleBatchChange" :disabled="isViewMode">
+            <el-option
+              v-for="b in batchList"
+              :key="b.batchId"
+              :label="b.batchName"
+              :value="b.batchId"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="任务ID" prop="taskId">
-          <el-input v-model="form.taskId" placeholder="请输入任务ID" />
+        <el-form-item label="任务" prop="taskId">
+          <el-select v-model="form.taskId" placeholder="请选择任务" filterable style="width: 100%" :disabled="isViewMode">
+            <el-option
+              v-for="t in filteredTaskList"
+              :key="t.taskId"
+              :label="t.taskName"
+              :value="t.taskId"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="使用数量" prop="usageQuantity">
-          <el-input-number v-model="form.usageQuantity" :min="0" :precision="2" style="width: 100%" />
+          <el-input-number v-model="form.usageQuantity" :min="0" :precision="0" style="width: 100%" :disabled="isViewMode" />
         </el-form-item>
         <el-form-item label="使用日期" prop="usageDate">
           <el-date-picker
@@ -119,26 +164,27 @@
             format="YYYY-MM-DD"
             value-format="YYYY-MM-DD"
             style="width: 100%"
+            :disabled="isViewMode"
           />
         </el-form-item>
         <el-form-item label="使用类型" prop="usageType">
-          <el-select v-model="form.usageType" placeholder="请选择使用类型" style="width: 100%">
+          <el-select v-model="form.usageType" placeholder="请选择使用类型" style="width: 100%" :disabled="isViewMode">
             <el-option label="领用" value="0" />
             <el-option label="消耗" value="1" />
             <el-option label="入库" value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="操作人员" prop="operator">
-          <el-input v-model="form.operator" placeholder="请输入操作人员" />
+          <el-input v-model="form.operator" placeholder="请输入操作人员" :disabled="isViewMode" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" :disabled="isViewMode" />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button v-if="!isViewMode" type="primary" @click="submitForm">确 定</el-button>
+          <el-button @click="cancel">关 闭</el-button>
         </div>
       </template>
     </el-dialog>
@@ -146,8 +192,8 @@
 </template>
 
 <script setup lang="ts">
-import { EditPen, Delete } from '@element-plus/icons-vue'
-import { ref, reactive, onMounted } from 'vue'
+import { EditPen, Delete, Document } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { resetForm } from '@/utils/utils'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { FormInstance } from 'element-plus'
@@ -165,15 +211,21 @@ const usageList = ref<AgricultureResourceUsageResult[]>([])
 const resourceList = ref<AgricultureResourceResult[]>([])
 const batchList = ref<AgricultureCropBatchResult[]>([])
 const taskList = ref<AgricultureCropBatchTaskResult[]>([])
+const filteredTaskList = computed(() => {
+  const bid = form.batchId
+  if (!bid) return taskList.value
+  return taskList.value.filter(t => String(t.batchId) === String(bid))
+})
 const open = ref(false)
 const loading = ref(true)
 const total = ref(0)
 const title = ref('')
+const isViewMode = ref(false)
 const searchFormRef = ref<FormInstance>()
 const usageRef = ref<FormInstance>()
 
 const columns = reactive([
-  { name: '使用记录ID', show: true },
+  { name: '使用记录ID', show: false },
   { name: '农资名称', show: true },
   { name: '批次名称', show: true },
   { name: '任务名称', show: true },
@@ -195,10 +247,10 @@ const changeColumn = (list: any) => {
 }
 
 const initialFormState = {
-  usageId: null,
-  resourceId: null,
-  batchId: '',
-  taskId: '',
+  usageId: null as any,
+  resourceId: '' as any, // 与 el-select 绑定，避免 null 类型冲突
+  batchId: '' as any,
+  taskId: '' as any,
   usageQuantity: 0,
   measureUnit: '',
   usageDate: '',
@@ -212,13 +264,15 @@ const form = reactive({ ...initialFormState })
 const queryParams = reactive({
   pageNum: 1,
   pageSize: 10,
-  usageId: '',
-  resourceId: '',
-  usageDate: ''
+  resourceId: '' as any,
+  batchId: '' as any,
+  taskId: '' as any,
+  usageType: '' as any,
+  dateRange: [] as any
 })
 
 const rules = reactive({
-  resourceId: [{ required: true, message: '农资ID不能为空', trigger: 'blur' }],
+  resourceId: [{ required: true, message: '农资不能为空', trigger: 'change' }],
   usageQuantity: [{ required: true, message: '使用数量不能为空', trigger: 'blur' }],
   usageDate: [{ required: true, message: '使用日期不能为空', trigger: 'change' }]
 })
@@ -244,6 +298,13 @@ const getTaskList = async () => {
   const res = await AgricultureCropBatchTaskService.listBatchTask({ pageNum: 1, pageSize: 9999 })
   if (res.code === 200) {
     taskList.value = res.rows || []
+  }
+}
+
+const handleBatchChange = async (val: any) => {
+  // 如有后台按批次查询任务的接口可替换为精准拉取；现用前端过滤
+  if (!taskList.value.length) {
+    await getTaskList()
   }
 }
 
@@ -280,7 +341,12 @@ const getUsageTypeLabel = (usageType: string) => {
 /** 查询农资使用记录列表 */
 const getList = async () => {
   loading.value = true
-  const res = await AgricultureResourceUsageService.listUsage(queryParams)
+  const payload: any = { ...queryParams }
+  if (Array.isArray(queryParams.dateRange) && queryParams.dateRange.length === 2) {
+    payload.beginTime = queryParams.dateRange[0]
+    payload.endTime = queryParams.dateRange[1]
+  }
+  const res = await AgricultureResourceUsageService.listUsage(payload)
   if (res.code === 200) {
     usageList.value = res.rows || []
     total.value = res.total || 0
@@ -294,7 +360,10 @@ const search = () => {
   getList()
 }
 
-const handleQuery = search
+const handleQuery = () => {
+  queryParams.pageNum = 1
+  getList()
+}
 
 /** 每页条数改变 */
 const handleSizeChange = (size: number) => {
@@ -313,13 +382,15 @@ const handleAdd = () => {
   reset()
   open.value = true
   title.value = '添加农资使用记录'
+  isViewMode.value = false
 }
 
-/** 修改按钮操作 */
+/** 详情按钮 */
 const handleUpdate = async (row: any) => {
   reset()
   open.value = true
-  title.value = '修改农资使用记录'
+  isViewMode.value = true
+  title.value = '农资使用记录详情'
   const res = await AgricultureResourceUsageService.getUsage(row.usageId)
   if (res.code === 200) {
     Object.assign(form, res.data)

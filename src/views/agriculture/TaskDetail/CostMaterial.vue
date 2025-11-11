@@ -71,24 +71,6 @@
                       v-hasPermi="['agriculture:resourceusage:edit']"
                   >归还
                   </el-button>
-                  <el-button
-                      size="small"
-                      type="primary"
-                      link
-                      icon="Edit"
-                      @click="handleUpdate(row)"
-                      v-hasPermi="['agriculture:resourceusage:edit']"
-                  >修改
-                  </el-button>
-                  <el-button
-                      size="small"
-                      type="primary"
-                      link
-                      icon="Delete"
-                      @click="handleDelete(row)"
-                      v-hasPermi="['agriculture:resourceusage:remove']"
-                  >删除
-                  </el-button>
               </template>
           </el-table-column>
       </el-table>
@@ -199,6 +181,8 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { AgricultureResourceUsageService } from '@/api/agriculture/resourceUsageApi'
 import { AgricultureTaskLogService } from "@/api/agriculture/logApi"
 import { AgricultureResourceService } from "@/api/agriculture/resourceApi"
+import { AgricultureCropBatchService } from "@/api/agriculture/cropBatchApi"
+import { AgricultureCropBatchTaskService } from "@/api/agriculture/cropBatchTaskApi"
 import { AgricultureResourceUsageResult } from '@/types/agriculture/resourceUsage'
 import { parseTime } from '@/utils/utils'
 import { UserResult } from '@/types/system/user'
@@ -299,9 +283,24 @@ const getList = async () => {
   loading.value = true
   try {
     const response = await AgricultureResourceUsageService.getUsageByTaskId(props.taskId)
+    console.log('[CostMaterial] getList taskId=', props.taskId, 'response=', response)
     if (response.code === 200) {
-      usageList.value = response.rows || []
-      total.value = response.total || 0
+      // 后端固定返回 data 数组
+      const list = (response as any).data ?? []
+      usageList.value = Array.isArray(list) ? list : []
+      total.value = list.length ?? 0
+      // 某些后端写入有延时，首次为空时延迟再拉一次
+      if ((!usageList.value || usageList.value.length === 0) && !loading.value) {
+        setTimeout(async () => {
+          const r2 = await AgricultureResourceUsageService.getUsageByTaskId(props.taskId)
+          console.log('[CostMaterial] retry getList response=', r2)
+          if (r2.code === 200) {
+            const list2 = (r2 as any).data ?? []
+            usageList.value = Array.isArray(list2) ? list2 : []
+            total.value = list2.length ?? 0
+          }
+        }, 400)
+      }
     }
   } finally {
     loading.value = false
@@ -559,14 +558,40 @@ const submitForm = async () => {
           return dateStr.includes(' ') ? dateStr : `${dateStr} 00:00:00`
         })()
 
+        // 若备注为空，自动生成：批次名-任务名 农资名称 使用
+        const autoRemark = async () => {
+          try {
+            // 批次名称
+            let batchName = ''
+            const batchIdToUse = props.batchId ? String(props.batchId) : form.batchId
+            if (batchIdToUse) {
+              const res = await AgricultureCropBatchService.getBatch(batchIdToUse)
+              batchName = res?.data?.batchName || ''
+            }
+            // 任务名称
+            let taskName = ''
+            if (props.taskId) {
+              const res = await AgricultureCropBatchTaskService.getBatchTask(props.taskId as any)
+              taskName = res?.data?.taskName || ''
+            }
+            // 农资名称
+            const resourceName = resource?.resourceName || resourceInfoList.value.find(r => r.resourceId === form.resourceId)?.resourceName || ''
+            const parts = [batchName, taskName].filter(Boolean).join('-')
+            if (!parts && !resourceName) return ''
+            return `${parts} ${resourceName} 使用`
+          } catch {
+            return ''
+          }
+        }
+
         // 确保batchId和taskId正确传递，优先使用props中的值
         const submitData = {
           ...form,
           usageDate: normalizedUsageDate,
           // 批次ID：优先使用props中的batchId，如果没有则使用form中的值
-          batchId: props.batchId ? props.batchId.toString() : (form.batchId || ''),
+          batchId: props.batchId ? String(props.batchId) : (form.batchId || ''),
           // 任务ID：必须使用props中的taskId
-          taskId: props.taskId.toString(),
+          taskId: String(props.taskId),
           // 根据农资类型和使用类型设置状态
           // 机械类型+领用：status = '2'（使用中）
           // 其他：status = '0'（正常）
@@ -575,7 +600,11 @@ const submitForm = async () => {
               return '2' // 机械类型领用，状态为使用中
             }
             return '0' // 其他情况，状态为正常
-          })()
+          })(),
+          remark: form.remark && String(form.remark).trim().length > 0 ? form.remark : await autoRemark(),
+          // 统一为后端期望的类型
+          resourceId: Number(form.resourceId),
+          usageQuantity: Number(form.usageQuantity)
         }
 
         console.log('提交农资使用数据:', submitData)
@@ -592,7 +621,7 @@ const submitForm = async () => {
           await addTaskLog(`新增农资使用 - ${typeLabel}`)
         }
         open.value = false
-        getList()
+        await getList()
       } catch (error) {
         console.error('提交失败:', error)
         ElMessage.error('操作失败')

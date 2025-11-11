@@ -235,10 +235,9 @@ const needRefresh = ref(false)
 const userInfo = computed(() => userStore.info)
 
 
-const form = reactive({
+const initialFormState = {
     taskId: null,
     batchId: null,
-    remark: null,
     taskName: null,
     batchName: null,
     planStart: null,
@@ -260,7 +259,9 @@ const form = reactive({
     batchHead: null,
     batchHeadName: null,
     vegetableId: null
-})
+}
+
+const form = reactive({ ...initialFormState })
 
 const rules = {
     responsiblePersonId: [{
@@ -332,19 +333,8 @@ const fetchUserList = async () => {
  * 日志
  */
 const fetchLogList = async () => {
-    const response = await AgricultureTaskLogService.listLog({ taskId: props.taskId, pageNum: 1, pageSize: 1000 })
-    if (response.rows && response.rows.length > 0) {
-        // 按时间倒序排列（最新的在前）
-        const sortedLogs = [...response.rows].sort((a, b) => {
-            const timeA = new Date(a.createTime || 0).getTime()
-            const timeB = new Date(b.createTime || 0).getTime()
-            return timeB - timeA // 倒序
-        })
-        // 只显示最近50条日志
-        logList.value = sortedLogs.slice(0, 50)
-    } else {
-        logList.value = []
-    }
+    const response = await AgricultureTaskLogService.listByTaskId(props.taskId)
+    logList.value = response?.rows || []
 }
 /**
  * 字典
@@ -358,31 +348,7 @@ const resetForm = () => {
     if (formRef.value) {
         formRef.value.resetFields()
     }
-    Object.assign(form, {
-        taskId: null,
-        batchId: null,
-        taskName: null,
-        batchName: null,
-        planStart: null,
-        planFinish: null,
-        actualStart: null,
-        actualFinish: null,
-        taskDetail: null,
-        taskImages: [],
-        taskVideos: [],
-        remark: null,
-        status: "0",
-        orderNum: null,
-        createBy: null,
-        createTime: null,
-        updateBy: null,
-        updateTime: null,
-        delFlag: null,
-        userName: null,
-        batchHead: null,
-        batchHeadName: null,
-        vegetableId: null
-    })
+    Object.assign(form, initialFormState)
 }
 
 const handleAdd = () => {
