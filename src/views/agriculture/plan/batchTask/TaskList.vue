@@ -24,7 +24,7 @@
                     </el-button>
                 </el-form-item>
                 <el-form-item class="fr">
-                    <el-button class="width-90" v-if="tableBorder" type="primary" size="small" plain @click="handleAdd">
+                    <el-button class="width-90" v-if="tableBorder && !readonly" type="primary" size="small" plain @click="handleAdd">
                         <el-icon>
                             <Plus />
                         </el-icon>新增任务
@@ -76,14 +76,34 @@
                                     </el-icon>任务处理
                                 </el-button>
 
-                                <el-button size="small" type="primary" plain @click="handleUpdate(task)"
-                                    v-if="tableBorder" v-auth="['agriculture:batchtask:edit']">
+                                <el-button 
+                                    size="small" 
+                                    type="primary" 
+                                    plain 
+                                    @click="handleTaskDetail(Number(task.taskId))"
+                                    v-if="tableBorder && readonly">
+                                    <el-icon>
+                                        <Document />
+                                    </el-icon>详情
+                                </el-button>
+                                <el-button 
+                                    size="small" 
+                                    type="primary" 
+                                    plain 
+                                    @click="handleUpdate(task)"
+                                    v-if="tableBorder && !readonly" 
+                                    v-auth="['agriculture:batchtask:edit']">
                                     <el-icon>
                                         <Edit />
                                     </el-icon>修改
                                 </el-button>
-                                <el-button size="small" type="danger" plain @click="handleDelete(task)"
-                                    v-if="tableBorder" v-auth="['agriculture:batchtask:remove']">
+                                <el-button 
+                                    size="small" 
+                                    type="danger" 
+                                    plain 
+                                    @click="handleDelete(task)"
+                                    v-if="tableBorder && !readonly" 
+                                    v-auth="['agriculture:batchtask:remove']">
                                     <el-icon>
                                         <Delete />
                                     </el-icon>删除
@@ -101,7 +121,7 @@
         <!-- 任务详情对话框 -->
         <el-dialog
             v-model="showTaskDetailDialog"
-            title="编辑任务"
+            :title="props.readonly ? '任务详情' : '编辑任务'"
             width="65%"
             top="5vh"
             append-to-body
@@ -112,7 +132,8 @@
                 :taskId="taskId"
                 :oprType="oprType || 'update'"
                 :batchId="props.batchId"
-                :fishDish="currentTaskFishDish"  
+                :fishDish="currentTaskFishDish"
+                :readonly="props.readonly"
                 :key="taskId"
                 @close="showTaskDetailDialog = false"
                 @updated="onTaskUpdated"
@@ -200,6 +221,11 @@ const props = defineProps({
     tableBorder: {
         type: Boolean,
         default: false
+    },
+    //只读模式，只显示详情按钮
+    readonly: {
+        type: Boolean,
+        default: false
     }
 })
 
@@ -213,7 +239,7 @@ const title = ref('')
 const formRef = ref()
 const queryFormRef = ref()
 const taskId = ref<number | null>(null)
-const oprType = ref<'add' | 'update' | null>(null)
+const oprType = ref<'add' | 'update' | 'view' | null>(null)
 const showTaskDetailDialog = ref(false)
 const currentTaskFishDish = ref(0)
 
@@ -437,6 +463,16 @@ const handleTask = (id: number) => {
     currentTaskFishDish.value = task?.dishFish ? (typeof task.dishFish === 'string' ? Number(task.dishFish) : task.dishFish) : 0; // 0为鱼，1为菜
     taskId.value = id;
     oprType.value = 'update';
+    showTaskDetailDialog.value = true;
+}
+
+// 处理任务详情按钮（只读模式）
+const handleTaskDetail = (id: number) => {
+    const task = taskList.value.find(t => t.taskId === id);
+    // dishFish 字段可能是字符串，需要转换为数字
+    currentTaskFishDish.value = task?.dishFish ? (typeof task.dishFish === 'string' ? Number(task.dishFish) : task.dishFish) : 0;
+    taskId.value = id;
+    oprType.value = 'view'; // 设置为查看模式
     showTaskDetailDialog.value = true;
 }
 

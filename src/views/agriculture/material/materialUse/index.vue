@@ -28,7 +28,7 @@
             <el-col :xs="24" :sm="12" :lg="6">
               <el-form-item label="任务" prop="taskId">
                 <el-select v-model="queryParams.taskId" filterable clearable placeholder="全部" style="width: 100%" @change="handleQuery">
-                  <el-option v-for="t in filteredTaskList" :key="t.taskId" :label="t.taskName" :value="t.taskId" />
+                  <el-option v-for="t in filteredTaskList" :key="t.taskId" :label="`${getBatchName(t.batchId)} - ${t.taskName}`" :value="t.taskId" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -77,37 +77,37 @@
     >
       <template #default>
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="农资名称" width="150" v-if="columns[1].show">
+        <el-table-column label="农资名称" show-overflow-tooltip v-if="columns[1].show">
           <template #default="{ row }">
             {{ getResourceName(row.resourceId) }}
           </template>
         </el-table-column>
-        <el-table-column label="批次名称" width="150" v-if="columns[2].show">
+        <el-table-column label="批次名称" show-overflow-tooltip v-if="columns[2].show">
           <template #default="{ row }">
             {{ getBatchName(row.batchId) }}
           </template>
         </el-table-column>
-        <el-table-column label="任务名称" width="150" v-if="columns[3].show">
+        <el-table-column label="任务名称" show-overflow-tooltip v-if="columns[3].show">
           <template #default="{ row }">
             {{ getTaskName(row.taskId) }}
           </template>
         </el-table-column>
-        <el-table-column label="使用数量" prop="usageQuantity" width="120" align="center" v-if="columns[4].show" />
-        <el-table-column label="计量单位" prop="measureUnit" width="100" align="center" v-if="columns[5].show" />
-        <el-table-column label="使用日期" prop="usageDate" width="120" align="center" v-if="columns[6].show">
+        <el-table-column label="使用数量" prop="usageQuantity" align="center" v-if="columns[4].show" />
+        <el-table-column label="计量单位" prop="measureUnit" align="center" v-if="columns[5].show" />
+        <el-table-column label="使用日期" prop="usageDate" align="center" v-if="columns[6].show">
           <template #default="{ row }">
             {{ (row.usageDate || '').split(' ')[0] }}
           </template>
         </el-table-column>
-        <el-table-column label="使用类型" width="100" align="center" v-if="columns[7].show">
+        <el-table-column label="使用类型" align="center" v-if="columns[7].show">
           <template #default="{ row }">
             {{ getUsageTypeLabel(row.usageType) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作人员" prop="operator" width="100" align="center" v-if="columns[8].show" />
-        <el-table-column label="备注" prop="remark" min-width="200" show-overflow-tooltip v-if="columns[9].show" />
-        <el-table-column label="创建时间" prop="createTime" width="180" align="center" v-if="columns[10].show" />
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作人员" prop="operator" align="center" v-if="columns[8].show" />
+        <el-table-column label="备注" prop="remark" show-overflow-tooltip v-if="columns[9].show" />
+        <el-table-column label="创建时间" prop="createTime" align="center" v-if="columns[10].show" />
+        <el-table-column label="操作" align="center" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="handleUpdate(scope.row)">
               <el-icon><Document /></el-icon>详情
@@ -148,7 +148,7 @@
             <el-option
               v-for="t in filteredTaskList"
               :key="t.taskId"
-              :label="t.taskName"
+              :label="`${getBatchName(t.batchId)} - ${t.taskName}`"
               :value="t.taskId"
             />
           </el-select>
@@ -315,10 +315,9 @@ const getResourceName = (resourceId: string) => {
 }
 
 /** 根据批次ID获取批次名称 */
-const getBatchName = (batchId: string | null) => {
-  if (!batchId) return '-'
-  const batch = batchList.value.find(item => String(item.batchId) === String(batchId))
-  return batch ? batch.batchName : (batchId || '-')
+const getBatchName = (bid: string | number): string => {
+  const b = batchList.value.find(b => String(b.batchId) === String(bid))
+  return b ? b.batchName : String(bid)
 }
 
 /** 根据任务ID获取任务名称 */
@@ -342,16 +341,36 @@ const getUsageTypeLabel = (usageType: string) => {
 const getList = async () => {
   loading.value = true
   const payload: any = { ...queryParams }
-  if (Array.isArray(queryParams.dateRange) && queryParams.dateRange.length === 2) {
-    payload.beginTime = queryParams.dateRange[0]
-    payload.endTime = queryParams.dateRange[1]
-  }
+  // 使用类型与日期前端筛选
+  delete payload.usageType
+  delete payload.dateRange
+  // 将 ID 字段转换为 number，避免与后端类型不一致导致筛选失效
+  if (payload.resourceId) payload.resourceId = Number(payload.resourceId)
+  if (payload.batchId) payload.batchId = Number(payload.batchId)
+  if (payload.taskId) payload.taskId = Number(payload.taskId)
   const res = await AgricultureResourceUsageService.listUsage(payload)
   if (res.code === 200) {
-    usageList.value = res.rows || []
-    total.value = res.total || 0
+    // 后端返回基础数据，前端根据使用类型与日期筛选
+    const list = (res.rows || []) as any[]
+    let filtered = list
+    // 使用类型前端筛选
+    if (queryParams.usageType !== '' && queryParams.usageType != null) {
+      filtered = filtered.filter(item => String(item.usageType) === String(queryParams.usageType))
+    }
+    // 日期范围前端筛选（包含边界）
+    if (Array.isArray(queryParams.dateRange) && queryParams.dateRange.length === 2) {
+      const [startStr, endStr] = queryParams.dateRange as any
+      const start = new Date(`${startStr} 00:00:00`).getTime()
+      const end = new Date(`${endStr} 23:59:59`).getTime()
+      filtered = filtered.filter(item => {
+        const t = new Date(item.usageDate).getTime()
+        return t >= start && t <= end
+      })
+    }
+    usageList.value = filtered
+    total.value = filtered.length
+    loading.value = false
   }
-  loading.value = false
 }
 
 /** 搜索按钮操作 */

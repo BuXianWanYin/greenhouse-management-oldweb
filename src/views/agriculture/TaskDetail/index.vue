@@ -1,21 +1,18 @@
 <template>
     <div class="task-detail">
-        <el-input :value="form.batchName + ' / ' + form.taskName" placeholder="" size="small"
-            clearable disabled class="task-name-input"></el-input>
+        <el-input :value="form.batchName + ' / ' + form.taskName" placeholder="" size="small" clearable disabled
+            class="task-name-input"></el-input>
 
         <el-form label-position="top" ref="formRef" :model="form" :rules="rules" label-width="0">
             <el-row class="mt-20">
                 <el-col :span="4" class="flex items-center">
-                    <status-select v-model="form.status" @change="handleSubmit"> 当前状态 </status-select>
+                    <status-select v-model="form.status" :disabled="props.readonly" @change="handleSubmit"> 当前状态
+                    </status-select>
                 </el-col>
                 <el-col :span="4" class="flex items-center">
                     <el-form-item prop="responsiblePersonId" class="mb-0">
-                        <radio-select 
-                            :options="userList" 
-                            v-model="form.responsiblePersonId" 
-                            key-name="nickName"
-                            value-name="userId" 
-                            @change="handleSubmit">
+                        <radio-select :options="userList" v-model="form.responsiblePersonId" key-name="nickName"
+                            value-name="userId" :disabled="props.readonly" @change="handleSubmit">
                             责任人
                         </radio-select>
                     </el-form-item>
@@ -27,25 +24,25 @@
                     <calendar-select v-model="form.planFinish" disabled>计划完成时间</calendar-select>
                 </el-col>
                 <el-col :span="4" class="flex items-center">
-                    <calendar-select v-model="form.actualStart" :showTime="false" :disabledDate="disableActualStartDate">实际开始时间</calendar-select>
+                    <calendar-select v-model="form.actualStart" :showTime="false" :disabled="props.readonly"
+                        :disabledDate="disableActualStartDate">实际开始时间</calendar-select>
                 </el-col>
                 <el-col :span="4" class="flex items-center">
-                    <calendar-select
-                      v-model="form.actualFinish"
-                      :showTime="false"
-                      :disabledDate="disableActualFinishDate"
-                    >
-                      实际结束时间
+                    <calendar-select v-model="form.actualFinish" :showTime="false" :disabled="props.readonly"
+                        :disabledDate="disableActualFinishDate">
+                        实际结束时间
                     </calendar-select>
                 </el-col>
             </el-row>
 
             <div class="mt-20">
                 <el-tabs v-model="activeTab">
-                    <el-tab-pane name="taskInfo" >
-                        <template #label :current-user="currentUser"  >
+                    <el-tab-pane name="taskInfo">
+                        <template #label :current-user="currentUser">
                             <span class="custom-tabs-label">
-                                <el-icon><Document /></el-icon>
+                                <el-icon>
+                                    <Document />
+                                </el-icon>
                                 <span>任务信息</span>
                             </span>
                         </template>
@@ -54,12 +51,12 @@
                             <template v-if="!isEditingRemark">
                                 <div v-if="form.remark" class="mt-4">
                                     {{ form.remark }}
-                                    <span class="text-primary ml-2 cursor-pointer edit-btn"
+                                    <span v-if="!props.readonly" class="text-primary ml-2 cursor-pointer edit-btn"
                                         @click="isEditingRemark = true">编辑</span>
                                 </div>
                                 <div v-else class="mt-4">
                                     --暂无描述--
-                                    <span class="text-primary ml-2 cursor-pointer"
+                                    <span v-if="!props.readonly" class="text-primary ml-2 cursor-pointer"
                                         @click="isEditingRemark = true">添加描述</span>
                                 </div>
                             </template>
@@ -69,25 +66,22 @@
                                 <div class="flex justify-end mt-2">
                                     <el-button-group>
                                         <!-- 自定义按钮样式：绿色背景、白色字体 -->
-                                        <el-button type="primary" size="small" class="confirm-btn" @click="handleSubmit(); isEditingRemark = false">
+                                        <el-button type="primary" size="small" class="confirm-btn"
+                                            @click="handleSubmit(); isEditingRemark = false">
                                             确定</el-button>
                                         <!-- 自定义按钮样式：绿色背景、白色字体 -->
-                                        <el-button type="primary" plain size="small" class="cancel-btn" @click="isEditingRemark = false">取消</el-button>
+                                        <el-button type="primary" plain size="small" class="cancel-btn"
+                                            @click="isEditingRemark = false">取消</el-button>
                                     </el-button-group>
                                 </div>
                             </template>
                         </div>
-                        
+
                         <div class="person-info-title">人员信息：</div>
-                        <multiple-select
-                          v-model="selectEmployeeList"
-                          class="person-info-select"
-                          :options="userList"
-                          key-name="nickName"
-                          value-name="userId"
-                          @change="handleTaskEmployeeChange"
-                        />
-                        
+                        <multiple-select v-model="selectEmployeeList" class="person-info-select" :options="userList"
+                            key-name="nickName" value-name="userId" :disabled="props.readonly"
+                            @change="handleTaskEmployeeChange" />
+
                         <div class="mt-8">
                             <div style="display: flex; align-items: center; margin-bottom: 1rem;">
                                 <span class="font-bold text-lg mr-2" style="color: black;">操作信息</span>
@@ -96,82 +90,78 @@
                             <div style="height: 150px; overflow-y: auto;">
                                 <div v-for="(log, index) in logList" :key="index" class="leading-8">
                                     {{ index + 1 }}、{{ log.createTime }} ，
-                                    由<span class="text-warning font-bold px-2">{{ log.operName }}</span><span>{{log.operDes}}</span>
+                                    由<span class="text-warning font-bold px-2">{{ log.operName
+                                        }}</span><span>{{ log.operDes }}</span>
                                 </div>
                             </div>
                         </div>
 
-                    
+
                     </el-tab-pane>
                     <el-tab-pane name="costEmployee">
                         <template #label>
                             <span class="custom-tabs-label">
-                                <el-icon><User /></el-icon>
+                                <el-icon>
+                                    <User />
+                                </el-icon>
                                 <span>人工工时</span>
                             </span>
                         </template>
-                        <cost-employee ref="costEmployeeRef" :task-id="taskId" :task-employee-list="selectedEmployeeObjects" :current-user="currentUser" @log="fetchLogList"></cost-employee>
+                        <cost-employee ref="costEmployeeRef" :task-id="taskId"
+                            :task-employee-list="selectedEmployeeObjects" :current-user="currentUser"
+                            :readonly="props.readonly"
+                            @log="fetchLogList"></cost-employee>
                     </el-tab-pane>
                     <el-tab-pane name="costMaterial">
                         <template #label>
                             <span class="custom-tabs-label">
-                                <el-icon><Food /></el-icon>
+                                <el-icon>
+                                    <Food />
+                                </el-icon>
                                 <span>农资使用</span>
                             </span>
                         </template>
-                        <cost-material
-                         :key="taskId"  
-                         :task-id="taskId"
-                         :current-user="currentUser" 
-                         :batch-id="form.batchId || props.batchId"
-                         :task-employee-list="selectedEmployeeObjects"
-                         @log="fetchLogList"></cost-material>
+                        <cost-material :key="taskId" :task-id="taskId" :current-user="currentUser"
+                            :batch-id="form.batchId || props.batchId" :task-employee-list="selectedEmployeeObjects"
+                            :readonly="props.readonly"
+                            @log="fetchLogList"></cost-material>
                     </el-tab-pane>
                     <el-tab-pane name="annex">
                         <template #label>
                             <span class="custom-tabs-label">
-                                <el-icon><Paperclip /></el-icon>
+                                <el-icon>
+                                    <Paperclip />
+                                </el-icon>
                                 <span>附件</span>
                             </span>
                         </template>
                         <div class="font-bold">图片:</div>
                         <div class="el-top upload-container">
-                            <el-upload
-                                class="cover-uploader"
-                                :action="uploadImageUrl"
-                                :headers="uploadHeaders"
-                                list-type="picture-card"
-                                :file-list="imageFileList"
-                                :on-success="onSuccess"
-                                :on-remove="onRemove"
-                                :before-upload="beforeUpload"
-                                :limit="5"
-                                multiple
-                            >
-                                <el-icon><Plus /></el-icon>
+                            <el-upload class="cover-uploader" :action="uploadImageUrl" :headers="uploadHeaders"
+                                list-type="picture-card" :file-list="imageFileList" :on-success="onSuccess"
+                                :on-remove="onRemove" :before-upload="beforeUpload" :limit="5" :disabled="props.readonly" multiple>
+                                <el-icon v-if="!props.readonly">
+                                    <Plus />
+                                </el-icon>
                             </el-upload>
                         </div>
                         <div class="font-bold mt-4">视频:</div>
                         <div class="el-top upload-container">
-                            <el-upload
-                                class="cover-uploader"
-                                :action="uploadVideoUrl"
-                                :headers="uploadHeaders"
-                                list-type="picture-card"
-                                :file-list="videoFileList"
-                                :on-success="onVideoSuccess"
-                                :on-remove="onVideoRemove"
-                                :before-upload="beforeVideoUpload"
-                                :limit="5"
-                                multiple
-                                accept="video/*"
-                            >
-                                <el-icon><VideoCamera /></el-icon>
+                            <el-upload class="cover-uploader" :action="uploadVideoUrl" :headers="uploadHeaders"
+                                list-type="picture-card" :file-list="videoFileList" :on-success="onVideoSuccess"
+                                :on-remove="onVideoRemove" :before-upload="beforeVideoUpload" :limit="5" :disabled="props.readonly" multiple
+                                accept="video/*">
+                                <el-icon v-if="!props.readonly">
+                                    <VideoCamera />
+                                </el-icon>
                                 <template #file="{ file }">
                                     <div class="video-file-container">
-                                        <video :src="file.url" class="cover-image" controls style="width: 100%; height: 100%; object-fit: cover;" />
-                                        <div class="video-delete-btn" @click.stop="handleVideoDelete(file)">
-                                            <el-icon><Delete /></el-icon>
+                                        <video :src="file.url" class="cover-image" controls
+                                            style="width: 100%; height: 100%; object-fit: cover;" />
+                                        <div v-if="!props.readonly" class="video-delete-btn" @click.stop="handleVideoDelete(file)">
+                                            <el-icon>
+                                                <Delete />
+                                            </el-icon>
                                         </div>
                                     </div>
                                 </template>
@@ -187,7 +177,7 @@
 <script setup>
 import { AgricultureTaskEmployeeService } from "@/api/agriculture/taskEmployeeApi"
 import { AgricultureCropBatchService } from "@/api/agriculture/cropBatchApi";
-import { AgricultureCropBatchTaskService } from "@/api/agriculture/cropBatchTaskApi";     
+import { AgricultureCropBatchTaskService } from "@/api/agriculture/cropBatchTaskApi";
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { Document, User, Paperclip, Plus, VideoCamera, Food, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -196,7 +186,7 @@ import CalendarSelect from "./CalendarSelect.vue"
 import MultipleSelect from "./MultipleSelect.vue"
 import StatusSelect from "./StatusSelect.vue"
 import CostEmployee from "./CostEmployee.vue"
-import CostMaterial from './CostMaterial.vue'   
+import CostMaterial from './CostMaterial.vue'
 import { useUserStore } from '@/store/modules/user'
 import { DictDataService } from '@/api/system/dict/dataApi'
 import { AgricultureTaskLogService } from '@/api/agriculture/logApi'
@@ -215,6 +205,11 @@ const props = defineProps({
     },
     batchId: {
         type: Number
+    },
+    //只读模式，只显示详情按钮
+    readonly: {
+        type: Boolean,
+        default: false
     },
 })
 
@@ -287,7 +282,7 @@ const fetchUserList = async () => {
         if (firstRes.code === 200) {
             const total = firstRes.total || 0
             const firstPageRows = firstRes.rows || []
-            
+
             // 如果总数小于等于100，直接使用第一页数据
             if (total <= 100) {
                 userList.value = firstPageRows.map(item => ({
@@ -298,24 +293,24 @@ const fetchUserList = async () => {
                 console.log('获取到的用户列表:', userList.value)
                 return
             }
-            
+
             // 如果总数大于100，需要分页查询所有数据
             const allUsers = [...firstPageRows]
             const totalPages = Math.ceil(total / 100)
-            
+
             // 并发查询剩余页
             const promises = []
             for (let page = 2; page <= totalPages; page++) {
                 promises.push(UserService.listUser({ pageNum: page, pageSize: 100 }))
             }
-            
+
             const results = await Promise.all(promises)
             results.forEach((res) => {
                 if (res.code === 200 && res.rows) {
                     allUsers.push(...res.rows)
                 }
             })
-            
+
             userList.value = allUsers.map(item => ({
                 ...item,
                 userId: Number(item.userId),
@@ -408,10 +403,15 @@ const addTaskLog = async (des) => {
 }
 
 const handleSubmit = async () => {
-    if (!formRef.value) {
+    // 只读模式下不允许提交
+    if (props.readonly) {
         return
     }
     
+    if (!formRef.value) {
+        return
+    }
+
     await formRef.value.validate(async (valid) => {
         if (valid) {
             // ====== 处理 taskImages 和 taskVideos 字段，防止后端反序列化报错 ======
@@ -500,11 +500,11 @@ const initData = async () => {
             fetchBatchTaskStatusList(),
             fetchLogList(),
             fetchUserList()
-        ])     
+        ])
         if (props.oprType === 'add') {
             console.log('执行handleAdd')
             handleAdd()
-        } else if (props.oprType === 'update') {
+        } else if (props.oprType === 'update' || props.oprType === 'view') {
             console.log('执行handleUpdate')
             await handleUpdate()
         }
@@ -535,8 +535,8 @@ watch([() => form.actualStart, () => form.actualFinish], (newVal, oldVal) => {
 
 const userStore = useUserStore()
 const currentUser = {
-  userId: userStore.info.id,
-  userName: userStore.info.name
+    userId: userStore.info.id,
+    userName: userStore.info.name
 }
 let { accessToken } = userStore
 // 传递 token
@@ -557,19 +557,19 @@ const onSuccess = (response, file, fileList) => {
 const imageFileList = ref([])
 
 watch(() => form.taskImages, (newVal) => {
-  imageFileList.value = newVal.map((url, idx) => ({
-    name: `图片${idx+1}`,
-    url,
-    uid: url // 用 url 做唯一标识
-  }))
+    imageFileList.value = newVal.map((url, idx) => ({
+        name: `图片${idx + 1}`,
+        url,
+        uid: url // 用 url 做唯一标识
+    }))
 }, { immediate: true })
 
 // 3. onRemove 只改 form.taskImages
 const onRemove = async (file, fileList) => {
-  form.taskImages = fileList.map(f => f.url)
-  addTaskLog('删除图片')
-  // 使用专门的方法更新图片数据，避免闪烁
-  await updateTaskImages()
+    form.taskImages = fileList.map(f => f.url)
+    addTaskLog('删除图片')
+    // 使用专门的方法更新图片数据，避免闪烁
+    await updateTaskImages()
 }
 
 // 上传失败后的处理函数
@@ -718,49 +718,49 @@ const handleTaskEmployeeChange = async (e) => {
 }
 
 const selectedEmployeeObjects = computed(() =>
-  userList.value.filter(user => selectEmployeeList.value.includes(user.userId))
+    userList.value.filter(user => selectEmployeeList.value.includes(user.userId))
 )
 
 const onTaskUpdated = () => {
-  needRefresh.value = true
+    needRefresh.value = true
 }
 
 const onTaskDetailClose = () => {
-  showTaskDetailDialog.value = false
-  if (needRefresh.value) {
-    getList()
-    needRefresh.value = false
-  }
+    showTaskDetailDialog.value = false
+    if (needRefresh.value) {
+        getList()
+        needRefresh.value = false
+    }
 }
 
 const emit = defineEmits(['close', 'updated'])
 const videoFileList = ref([])
 
 watch(() => form.taskVideos, (newVal) => {
-  videoFileList.value = newVal.map((url, idx) => ({
-    name: `视频${idx+1}`,
-    url,
-    uid: url // 用 url 做唯一标识
-  }))
+    videoFileList.value = newVal.map((url, idx) => ({
+        name: `视频${idx + 1}`,
+        url,
+        uid: url // 用 url 做唯一标识
+    }))
 }, { immediate: true })
 
 const disableActualFinishDate = (date) => {
-  if (!form.actualStart) return false;
-  // 获取实际开始日期的00:00:00时间戳，用于比较
-  const startDate = new Date(form.actualStart);
-  startDate.setHours(0, 0, 0, 0);
-  
-  // 获取待检查日期的00:00:00时间戳
-  const checkDate = new Date(date);
-  checkDate.setHours(0, 0, 0, 0);
-  
-  // 只禁用比实际开始日期更早的日期（不包括同一天）
-  return checkDate.getTime() < startDate.getTime();
+    if (!form.actualStart) return false;
+    // 获取实际开始日期的00:00:00时间戳，用于比较
+    const startDate = new Date(form.actualStart);
+    startDate.setHours(0, 0, 0, 0);
+
+    // 获取待检查日期的00:00:00时间戳
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+
+    // 只禁用比实际开始日期更早的日期（不包括同一天）
+    return checkDate.getTime() < startDate.getTime();
 };
 
 const disableActualStartDate = (date) => {
-  // 去掉不能选择今天之前的限制，允许选择任意日期
-  return false;
+    // 去掉不能选择今天之前的限制，允许选择任意日期
+    return false;
 };
 
 </script>
@@ -770,6 +770,7 @@ const disableActualStartDate = (date) => {
     margin-top: -15px;
     height: 30px;
 }
+
 .task-detail {
     :deep(.el-tabs__nav-wrap::after) {
         height: 1px;
@@ -779,7 +780,7 @@ const disableActualStartDate = (date) => {
         display: flex;
         align-items: center;
         gap: 4px;
-        
+
         .el-icon {
             margin-right: 4px;
         }
@@ -787,89 +788,92 @@ const disableActualStartDate = (date) => {
 }
 
 .task-description {
-  margin-bottom: 15px;
+    margin-bottom: 15px;
 }
 
-.task-description > .text-lg {
-  margin-bottom: 12px;
+.task-description>.text-lg {
+    margin-bottom: 12px;
 }
 
 .mt-8 {
-  margin-top: 15px !important;
+    margin-top: 15px !important;
 }
 
 // 编辑按钮绿色字体
 .edit-btn {
-  color: #3bb77e !important;
+    color: #3bb77e !important;
 }
 
 // 自定义"确定"按钮样式：绿色背景、白色字体、无边框
 .confirm-btn {
-  background: #3bb77e !important;
-  color: #fff !important;
-  border: none !important;
+    background: #3bb77e !important;
+    color: #fff !important;
+    border: none !important;
 }
+
 // 自定义"取消"按钮样式：灰色背景、白色字体、无边框
 .cancel-btn {
-  background: #acf3d1 !important;
-  color: #fff !important;
-  border: none !important;
+    background: #acf3d1 !important;
+    color: #fff !important;
+    border: none !important;
 }
+
 // 鼠标悬停时按钮颜色加深
 .confirm-btn:hover {
-  background: #34a06a !important;
-  color: #fff !important;
+    background: #34a06a !important;
+    color: #fff !important;
 }
+
 .cancel-btn:hover {
-  background: #bdbdbd !important;
-  color: #fff !important;
+    background: #bdbdbd !important;
+    color: #fff !important;
 }
 
 .person-info-title {
-  margin-top: 30px !important;   // 上方间隔
-  margin-bottom: 15px !important; // 下方间隔
-  font-size: 16px;
+    margin-top: 30px !important; // 上方间隔
+    margin-bottom: 15px !important; // 下方间隔
+    font-size: 16px;
 }
 
 .person-info-select {
-  margin-bottom: 12px !important; // 下方间隔
+    margin-bottom: 12px !important; // 下方间隔
 }
 
 // 视频文件容器样式
 .video-file-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
+    position: relative;
+    width: 100%;
+    height: 100%;
 
-  .video-delete-btn {
-    display: none; // 默认隐藏
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 20px;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.6);
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: white;
-    font-size: 12px;
-    transition: all 0.3s ease;
+    .video-delete-btn {
+        display: none; // 默认隐藏
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 20px;
+        height: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: white;
+        font-size: 12px;
+        transition: all 0.3s ease;
 
-    &:hover {
-      background: rgba(255, 0, 0, 0.8);
-      transform: scale(1.1);
+        &:hover {
+            background: rgba(255, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+
+        .el-icon {
+            font-size: 12px;
+        }
     }
 
-    .el-icon {
-      font-size: 12px;
+    // 悬停时显示删除按钮
+    &:hover .video-delete-btn {
+        display: flex;
     }
-  }
-
-  // 悬停时显示删除按钮
-  &:hover .video-delete-btn {
-    display: flex;
-  }
 }
 </style>

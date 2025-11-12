@@ -71,89 +71,84 @@
         <el-row :gutter="24">
           <el-col :span="8" v-for="item in batchList" :key="item.batchId">
             <el-card class="batch-card" shadow="hover">
-              <div class="batch-card-header">
-                <div class="header-content">
-                  <div class="section-name">批次名称</div>
-                  <div class="batch-name">{{ item.batchName }}</div>
-                </div>
-                <el-tag :type="item.hasHarvestRecord ? 'success' : 'warning'">
-                  {{ item.hasHarvestRecord ? '已采摘' : '已成熟' }}
-                </el-tag>
-              </div>
-              <div class="batch-image">
-                <!-- 轮播间隔为2秒 -->
-                <!-- 多图显示箭头，单图不显示 -->
-                <!-- 轮播高度180px -->
-                <!-- 指示器在外部 -->
-                <!-- 宽度100% -->
-                <el-carousel
-                  :interval="2000"
-                  :arrow="getClassImages(item).length > 1 ? 'always' : 'never'"
-                  height="180px"
-                  indicator-position="outside"
-                  style="width: 100%"
-                >
-                  <!-- 遍历所有图片 -->
-                  <el-carousel-item
-                    v-for="(img, idx) in getClassImages(item)"
-                    :key="idx"
-                    style="
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      height: 180px;
-                      cursor: pointer;
-                    "
+              <div class="batch-card-body">
+                <!-- 左侧图片区域 -->
+                <div class="batch-image">
+                  <el-carousel
+                    :interval="2000"
+                    :arrow="getClassImages(item).length > 1 ? 'always' : 'never'"
+                    height="280px"
+                    indicator-position="none"
+                    style="width: 100%"
                   >
-                    <!-- 图片自适应容器 -->
-                    <img :src="img" alt="种质图片" style="max-width: 100%; max-height: 100%" />
-                  </el-carousel-item>
-                </el-carousel>
-              </div>
-              <div class="batch-card-content">
-                <div class="batch-info">
-                  <div class="info-item">
-                    <el-icon><Menu /></el-icon>
-                    <span class="label">种质：</span>
-                    <span>{{ item.displayClassName }}</span>
+                    <el-carousel-item
+                      v-for="(img, idx) in getClassImages(item)"
+                      :key="idx"
+                    >
+                      <img :src="img" alt="种质图片" />
+                    </el-carousel-item>
+                  </el-carousel>
+                </div>
+                
+                <!-- 右侧内容区域 -->
+                <div class="batch-content">
+                  <!-- 批次名称和状态 -->
+                  <div class="batch-card-header">
+                    <div class="header-content">
+                      <div class="batch-name">{{ item.batchName }}</div>
+                    </div>
+                    <el-tag :type="item.hasHarvestRecord ? 'success' : 'warning'" size="small">
+                      {{ item.hasHarvestRecord ? '已采摘' : '已成熟' }}
+                    </el-tag>
                   </div>
-                  <div class="info-item">
-                    <el-icon><User /></el-icon>
-                    <span class="label">负责人：</span>
-                    <span>{{ item.nickName }}</span>
+                  
+                  <!-- 信息区域 -->
+                  <div class="batch-card-info">
+                    <div class="info-item">
+                      <el-icon><Menu /></el-icon>
+                      <span class="label">种质：</span>
+                      <span>{{ item.displayClassName }}</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><User /></el-icon>
+                      <span class="label">负责人：</span>
+                      <span>{{ item.nickName }}</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><House /></el-icon>
+                      <span class="label">所属温室：</span>
+                      <span>{{ getPastureName(item.pastureId) }}</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><FullScreen /></el-icon>
+                      <span class="label">种植面积：</span>
+                      <span>{{ item.cropArea }}亩</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><Calendar /></el-icon>
+                      <span class="label">开始时间：</span>
+                      <span>{{ parseTime(item.createTime, '{y}-{m}-{d}') }}</span>
+                    </div>
                   </div>
-                  <div class="info-item">
-                    <el-icon><House /></el-icon>
-                    <span class="label">所属大棚：</span>
-                    <span>{{ getPastureName(item.pastureId) }}</span>
-                  </div>
-                  <div class="info-item">
-                    <el-icon><FullScreen /></el-icon>
-                    <span class="label">种植面积：</span>
-                    <span>{{ item.cropArea }}亩</span>
-                  </div>
-                  <div class="info-item">
-                    <el-icon><Calendar /></el-icon>
-                    <span class="label">开始时间：</span>
-                    <span>{{ parseTime(item.createTime, '{y}-{m}-{d}') }}</span>
+                  
+                  <!-- 操作按钮 -->
+                  <div class="batch-card-actions">
+                    <el-button
+                      size="small"
+                      type="primary"
+                      @click="openHarvestDialog(item.batchId, item.vegDone, item.hasHarvestRecord)"
+                    >
+                      {{ item.hasHarvestRecord ? '采摘详情' : '采摘' }}
+                    </el-button>
+                    <el-button
+                      size="small"
+                      plain
+                      type="warning"
+                      @click="handleBatchTask(item)"
+                      >批次任务</el-button
+                    >
                   </div>
                 </div>
-              </div>
-              <div class="batch-card-actions">
-                <el-button
-                  size="small"
-                  type="primary"
-                  @click="openHarvestDialog(item.batchId, item.vegDone, item.hasHarvestRecord)"
-                >
-                  {{ item.hasHarvestRecord ? '采摘详情' : '采摘' }}
-                </el-button>
-                <el-button
-                  size="small"
-                  plain
-                  type="warning"
-                  @click="handleBatchTask(item)"
-                  >批次任务</el-button
-                >
               </div>
             </el-card>
           </el-col>
@@ -182,8 +177,7 @@
     <!-- 种植计划对话框 -->
     <el-dialog v-model="batchTask.open" :title="batchTask.title" width="1300px">
       <div style="height: 500px; width: 100%; overflow: auto">
-        <!-- <Task :batchId="batchTask.batchId" :tableBorder="true" /> -->
-        <Task :batchId="batchTask.batchId" :tableBorder="true" />
+        <Task :batchId="batchTask.batchId" :tableBorder="true" :readonly="true" />
       </div>
     </el-dialog>
 
@@ -210,27 +204,17 @@
                 <!-- 左侧二维码 -->
                 <div class="qr-code-section">
                   <div class="qr-code">
-                    <img :src="item.barcode" alt="二维码" />
+                    <img v-if="item.barcode" :src="item.barcode" alt="二维码" />
+                    <div v-else style="width: 150px; height: 150px; display: flex; align-items: center; justify-content: center; background: #f5f7fa; color: #909399;">
+                      暂无二维码
+                    </div>
                   </div>
                   <div class="id-code">ID: {{ item.id }}</div>
                 </div>
                 <!-- 中间信息区域 -->
                 <div class="info-section">
                   <div class="header-title">
-                    <span class="food-name">{{ item.name }}</span>
-                    <el-tag
-                      :type="
-                        getQualityTagType(item.status) as
-                          | 'success'
-                          | 'info'
-                          | 'warning'
-                          | 'danger'
-                          | 'primary'
-                      "
-                      size="small"
-                    >
-                      {{ statusDict[String(item.status)] }}
-                    </el-tag>
+                    <span class="food-name">{{ getClassName(item.classId) }}</span>
                   </div>
                   <div class="harvest-info">
                     <div class="info-row">
@@ -239,23 +223,22 @@
                         <span class="label">采摘日期:</span>
                         <span>{{ item.date }}</span>
                       </div>
-                      <!-- 只在有蔬菜重量时显示 -->
-                      <div class="info-item" v-if="item.cuisineWeight">
+                      <div class="info-item">
                         <i class="el-icon-shopping-cart-full"></i>
-                        <span class="label">蔬菜重量:</span>
-                        <span>{{ item.cuisineWeight }}kg</span>
+                        <span class="label">采摘重量:</span>
+                        <span>{{ item.weight }}kg</span>
                       </div>
                     </div>
                     <div class="info-row">
                       <div class="info-item">
                         <i class="el-icon-location"></i>
-                        <span class="label">分区 ID:</span>
+                        <span class="label">批次 ID:</span>
                         <span>{{ item.iaPartitionId }}</span>
                       </div>
                       <div class="info-item">
-                        <i class="el-icon-notebook-2"></i>
-                        <span class="label">备注:</span>
-                        <span>{{ item.description || '暂无备注' }}</span>
+                        <i class="el-icon-menu"></i>
+                        <span class="label">种质 ID:</span>
+                        <span>{{ item.classId }}</span>
                       </div>
                     </div>
                   </div>
@@ -273,38 +256,32 @@
     <!-- 新增采摘记录弹窗 -->
     <el-dialog title="新增" v-model="addDialogVisible" width="600px">
       <el-form :model="addForm" :rules="addFormRules" ref="addFormRef" label-width="100px">
-        <el-form-item label="食品名称" prop="name" >
+        <el-form-item label="种质" prop="classId">
           <el-select 
-            multiple size="small"
-            v-model="addForm.name"
-            placeholder="请选择食品名称"
-            :disabled="foodNameOptions.length === 1"
+            size="small"
+            v-model="addForm.classId"
+            placeholder="请选择种质"
+            :disabled="classIdOptions.length === 1"
           >
-            <el-option v-for="opt in foodNameOptions" :key="opt" :label="opt" :value="opt" />
+            <el-option 
+              v-for="opt in classIdOptions" 
+              :key="opt.classId" 
+              :label="opt.className" 
+              :value="opt.classId" 
+            />
           </el-select>
         </el-form-item>
-        <!-- 蔬菜相关 -->
-        <el-form-item v-if="isVegetable" label="蔬菜重量" prop="cuisineWeight">
-          <el-input v-model="addForm.cuisineWeight" type="number" style="width: 80%" />
+        <el-form-item label="采摘重量" prop="weight">
+          <el-input v-model="addForm.weight" type="number" style="width: 80%" />
           <span style="margin-left: 8px">kg</span>
         </el-form-item>
-        <el-form-item v-if="isVegetable" label="蔬菜质量" prop="cuisineStatus">
-          <el-select v-model="addForm.cuisineStatus" placeholder="请选择">
-            <el-option label="不合格" value="0" />
-            <el-option label="合格" value="1" />
-            <el-option label="优秀" value="2" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="日期" prop="date">
+        <el-form-item label="采摘日期" prop="date">
           <el-date-picker
             v-model="addForm.date"
             type="datetime"
             placeholder="选择日期时间"
             style="width: 100%"
           />
-        </el-form-item>
-        <el-form-item label="备注信息" prop="description">
-          <el-input v-model="addForm.description" type="textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -392,50 +369,35 @@
   const processDialogVisible = ref(false)
   const addDialogVisible = ref(false)
   const addForm = reactive({
-    name: [] as string[],
-    weight: '',
+    classId: undefined as number | undefined,
+    weight: undefined as number | undefined,
     date: '',
-    cuisineStatus: '',
-    description: '',
-    iaPartitionId: '',
-    cuisineWeight: ''
+    iaPartitionId: ''
   })
-  // 食品名称可选项
-  const foodNameOptions = ref<string[]>([])
+  // 种质可选项
+  const classIdOptions = ref<Array<{classId: number, className: string}>>([])
   const addFormRules: any = {
-    name: [{ required: true, type: 'array', min: 1, message: '请选择食品名称', trigger: ['blur', 'change'] }],
-    cuisineWeight: [{ required: true, message: '请输入蔬菜重量', trigger: ['blur', 'change'] }],
-    date: [{ required: true, message: '请选择日期', trigger: ['blur', 'change'] }],
-    cuisineStatus: [{ required: true, message: '请选择蔬菜食品质量', trigger: ['blur', 'change'] }]
-    // description: [{ required: true, message: '请输入备注信息', trigger: ['blur', 'change'] }]
+    classId: [{ required: true, message: '请选择种质', trigger: ['blur', 'change'] }],
+    weight: [{ required: true, message: '请输入采摘重量', trigger: ['blur', 'change'] }],
+    date: [{ required: true, message: '请选择采摘日期', trigger: ['blur', 'change'] }]
   }
   const addFormRef = ref()
   const currentBatchId = ref<string | number | null>(null)
   const currentVegetableId = ref<number | null>(null)
 
-  const statusDict: { [key: string]: string } = {
-    '0': '不及格',
-    '1': '及格',
-    '2': '优秀'
-  }
-
-  function getQualityTagType(status: string | number) {
-    const types: Record<string, string> = {
-      '0': 'danger',
-      '1': 'warning',
-      '2': 'success'
-    }
-    return types[String(status)] || 'info'
-  }
 
   const canAddHarvest = computed(() => {
-    // 当前分区下已采摘的种质名
-    const pickedNames = processData.value.map((item: any) => item.name)
-    const options: string[] = []
+    // 当前分区下已采摘的种质ID
+    const pickedClassIds = processData.value.map((item: any) => item.classId)
+    const options: Array<{classId: number, className: string}> = []
     if (batchTask.vegDone && currentVegetableId.value) {
-      const vegClass = germplasmList.value.find((c: any) => c.classId == currentVegetableId.value)
-      if (vegClass && !pickedNames.includes(vegClass.className)) {
-        options.push(vegClass.className)
+      
+      const classItem = germplasmList.value.find((c: any) => c.classId == currentVegetableId.value)
+      if (classItem && !pickedClassIds.includes(Number(classItem.classId))) {
+        options.push({
+          classId: Number(classItem.classId),
+          className: classItem.className
+        })
       }
     }
     return options.length > 0
@@ -444,65 +406,45 @@
   function addProcess(
     title: string,
     iaPartitionId?: string | number | null,
-    vegetableId?: number
+    classId?: number
   ) {
-    // 当前分区下已采摘的种质名
-    const pickedNames = processData.value.map((item: any) => item.name)
-    const options: string[] = []
-    if (vegetableId && batchTask.vegDone) {
-      const vegClass = germplasmList.value.find((c: any) => c.classId == vegetableId)
-      if (vegClass && !pickedNames.includes(vegClass.className)) {
-        options.push(vegClass.className)
+    // 当前分区下已采摘的种质ID
+    const pickedClassIds = processData.value.map((item: any) => item.classId)
+    const options: Array<{classId: number, className: string}> = []
+    
+    if (classId && batchTask.vegDone) {
+      const classItem = germplasmList.value.find((c: any) => c.classId == classId)
+      if (classItem && !pickedClassIds.includes(Number(classItem.classId))) {
+        options.push({
+          classId: Number(classItem.classId),
+          className: classItem.className
+        })
       }
     }
-    foodNameOptions.value = options
+    classIdOptions.value = options
     Object.assign(addForm, {
-      name: options,
-      cuisineWeight: '',
+      classId: options.length === 1 ? options[0].classId : undefined,
+      weight: undefined,
       date: '',
-      description: '',
       iaPartitionId: iaPartitionId ? String(iaPartitionId) : ''
     })
     addDialogVisible.value = true
   }
 
   const handleAddSave = () => {
-    let fields = ['name', 'date', 'description']
-    if (isVegetable.value) {
-      fields.push('cuisineWeight', 'cuisineStatus')
-    }
+    const fields = ['classId', 'weight', 'date']
     addFormRef.value.validateField(fields, async (valid: boolean) => {
       if (!valid) return
       try {
         const formData = {
-          ...addForm,
+          iaPartitionId: addForm.iaPartitionId,
+          classId: addForm.classId,
+          weight: Number(addForm.weight),
           date: formatDateTime(addForm.date)
         }
-        const addList = []
 
-        // 遍历用户选择的食品名称
-        for (const name of formData.name) {
-          const classObj = germplasmList.value.find((c: any) => c.className === name)
-          if (!classObj) continue
-          if (classObj.type === 'vegetable') {
-            addList.push({
-              iaPartitionId: formData.iaPartitionId,
-              cuisineWeight: formData.cuisineWeight,
-              fishWeight: '',
-              weight: formData.cuisineWeight,
-              name,
-              date: formData.date,
-              description: formData.description,
-              status: formData.cuisineStatus,
-              cuisineStatus: formData.cuisineStatus,
-              fishStatus: '',
-              foodType: 'cuisine'
-            })
-          }
-        }
-
-        // 并发保存
-        await Promise.all(addList.map((item) => partitionFoodService.addFood(item)))
+        // 保存采摘记录
+        await partitionFoodService.addFood(formData)
         ElMessage.success('新增成功')
         addDialogVisible.value = false
         if (currentBatchId.value) {
@@ -560,29 +502,28 @@
     // 3. 只保留所有任务都为已完成（status === '3'）的批次
     const filteredBatches: any[] = []
     for (const { batch, tasks } of batchTasks) {
-      // 只保留蔬菜任务（fishDish === 1）
-      const vegTasks = tasks.filter((task: any) => task.fishDish === 1);
+      const allTasksDone = tasks.length > 0 && tasks.every((task: any) => String(task.status) === '3');
 
-      // 判断蔬菜任务是否全部完成
-      const vegDone = vegTasks.length > 0 && vegTasks.every((task: any) => String(task.status) === '3');
-
-      // 蔬菜任务完成就显示
-      if (vegDone) {
-        // 标记蔬菜任务完成
-        batch.vegDone = vegDone;
+      // 所有任务完成就显示
+      if (allTasksDone) {
+        // 标记任务完成
+        batch.vegDone = allTasksDone;
         filteredBatches.push(batch);
       }
     }
 
     // 4. 查询采摘记录
     for (const batch of filteredBatches) {
-      // 拼接种质名（只显示蔬菜）
-      const vegetableClass = germplasmList.value.find((c: any) => c.classId == (batch as any).vegetableId)
-      if (vegetableClass) {
-        batch.displayClassName = vegetableClass.className
-      } else {
-        batch.displayClassName = ''
+      // 拼接种质名（使用 classId 字段）
+      let displayClassName = ''
+      if ((batch as any).classId) {
+        const classItem = germplasmList.value.find((c: any) => c.classId == (batch as any).classId)
+        if (classItem) {
+          displayClassName = classItem.className
+        }
       }
+      batch.displayClassName = displayClassName
+      
       const res = await partitionFoodService.page({
         partitionId: batch.batchId,
         pageNum: 1,
@@ -610,10 +551,7 @@
   // 获取种质列表
   async function getGermplasmList() {
     const res = await AgricultureClassService.listClass({})
-    germplasmList.value = (res.rows || []).map((item: any) => ({
-      ...item,
-      type: 'vegetable' // 只保留蔬菜类型
-    }))
+    germplasmList.value = res.rows || []
     console.log('germplasmList:', germplasmList.value)
   }
 
@@ -658,14 +596,13 @@
     return found ? found.classImage : ''
   }
 
-  // 获取当前批次的所有种质图片（蔬菜）
+  // 获取当前批次的所有种质图片
   function getClassImages(item: any) {
     const images = []
-    if (item.vegetableId) {
-      // 获取蔬菜图片
-      const vegImg = getClassImage(item.vegetableId)
-      // 有图片则加入数组
-      if (vegImg) images.push(vegImg)
+    // 使用 classId 获取种质图片
+    if (item.classId) {
+      const classImg = getClassImage(item.classId)
+      if (classImg) images.push(classImg)
     }
     // 没有图片时用默认图片
     if (images.length === 0) images.push('默认图片地址')
@@ -675,10 +612,10 @@
 
   async function openHarvestDialog(batchId: string | number, vegDone: boolean, hasHarvestRecord: boolean) {
     currentBatchId.value = batchId
-    // 请求分区详情，获取种质
+    // 请求分区详情，获取种质（使用 classId 字段）
     const res = await AgricultureCropBatchService.getBatch(batchId)
-    if (res.data && (res.data as any).vegetableId) {
-      currentVegetableId.value = Number((res.data as any).vegetableId)
+    if (res.data && (res.data as any).classId) {
+      currentVegetableId.value = Number((res.data as any).classId)
     }
     batchTask.vegDone = vegDone
 
@@ -717,21 +654,11 @@
     return found ? found.name : pastureId
   }
 
-  const isVegetable = ref(true) // 只保留蔬菜
 
-  // 监听食品名称变化
-  watch(
-    () => addForm.name,
-    (val: string[]) => {
-      isVegetable.value = val.some((name) =>
-        germplasmList.value.find((c) => c.className === name && c.type === 'vegetable')
-      )
-    }
-  )
-
-  onMounted(() => {
-    getList()
-    getGermplasmList()
+  onMounted(async () => {
+    // 先加载种质列表，确保绑定种质信息时列表已准备好
+    await getGermplasmList()
+    await getList()
     getUserList()
     getPastureList()
   })
@@ -862,91 +789,132 @@
     height: 100%;
     background: white;
     border-radius: 16px;
-    padding: 16px;
+    padding: 0;
     transition: all 0.3s ease;
     border: 1px solid rgba(0, 0, 0, 0.05);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+
+    .batch-card-body {
+      display: flex;
+      height: 100%;
+    }
+
+    .batch-image {
+      width: 280px;
+      flex-shrink: 0;
+      background: #f5f7fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+
+      :deep(.el-carousel) {
+        height: 100%;
+        width: 100%;
+      }
+
+      :deep(.el-carousel__container) {
+        height: 100%;
+        width: 100%;
+      }
+
+      :deep(.el-carousel__item) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f5f7fa;
+      }
+
+      img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+      }
+    }
+
+    .batch-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      min-width: 0;
+    }
 
     .batch-card-header {
-      margin-bottom: 16px;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-shrink: 0;
 
       .header-content {
-        .section-name {
-          font-size: 12px;
-          color: #909399;
-          margin-bottom: 4px;
-        }
+        flex: 1;
+        min-width: 0;
 
         .batch-name {
           font-size: 16px;
           font-weight: 600;
           color: #333;
+          line-height: 1.4;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
 
       .el-tag {
         border-radius: 4px;
-        padding: 0 8px;
+        padding: 2px 8px;
+        margin-left: 8px;
+        flex-shrink: 0;
       }
     }
 
-    .batch-image {
-      width: 100%;
-      height: 180px;
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: pointer;
-      margin-bottom: 16px;
+    .batch-card-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
 
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.3s ease;
-      }
+      .info-item {
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        line-height: 1.5;
 
-      &:hover img {
-        transform: scale(1.05);
-      }
-    }
+        .el-icon {
+          color: #409eff;
+          margin-right: 6px;
+          font-size: 14px;
+          flex-shrink: 0;
+        }
 
-    .batch-card-content {
-      padding: 0;
+        .label {
+          color: #666;
+          margin-right: 4px;
+          flex-shrink: 0;
+        }
 
-      .batch-info {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-
-        .info-item {
-          font-size: 13px;
-          display: flex;
-          align-items: center;
-
-          i {
-            color: #409eff;
-            margin-right: 8px;
-            font-size: 14px;
-          }
-
-          .label {
-            color: #666;
-            margin-right: 8px;
-          }
+        span:last-child {
+          color: #333;
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
     }
 
     .batch-card-actions {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #ebeef5;
       display: flex;
       gap: 8px;
       justify-content: flex-end;
+      flex-shrink: 0;
+      padding-top: 12px;
 
       .el-button {
         padding: 6px 12px;

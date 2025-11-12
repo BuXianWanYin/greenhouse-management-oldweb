@@ -44,6 +44,7 @@
       >
         <template #header>
           <el-tag
+            v-if="!props.readonly"
             @click="handleAdd"
             v-hasPermi="['agriculture:costEmployee:add']"
             class="cursor-pointer"
@@ -51,6 +52,7 @@
         </template>
         <template #default="{ row }">
           <el-button
+            v-if="!props.readonly"
             size="small"
             type="primary"
             link
@@ -59,6 +61,7 @@
             v-hasPermi="['agriculture:costEmployee:edit']"
           >修改</el-button>
           <el-button
+            v-if="!props.readonly"
             size="small"
             type="primary"
             link
@@ -157,7 +160,8 @@ import { parseTime } from '@/utils/utils'
 const props = defineProps<{
   taskId: number | string,
   taskEmployeeList: UserResult[],
-  currentUser: { userId: string | number, userName: string }
+  currentUser: { userId: string | number, userName: string },
+  readonly?: boolean
 }>()
 
 const emit = defineEmits(['log'])

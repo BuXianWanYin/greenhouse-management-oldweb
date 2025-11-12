@@ -44,34 +44,34 @@
     >
       <template #default>
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="库存ID" prop="inventoryId" width="100" v-if="columns[0].show" />
-        <el-table-column label="农资ID" prop="resourceId" width="100" v-if="columns[1].show" />
-        <el-table-column label="农资编码" width="120" v-if="columns[2].show">
+        <el-table-column label="库存ID" prop="inventoryId" align="center" v-if="columns[0].show" />
+        <el-table-column label="农资ID" prop="resourceId" align="center" v-if="columns[1].show" />
+        <el-table-column label="农资编码" v-if="columns[2].show">
           <template #default="{ row }">
             {{ getResourceCode(row.resourceId) }}
           </template>
         </el-table-column>
-        <el-table-column label="农资名称" width="150" v-if="columns[3].show">
+        <el-table-column label="农资名称" show-overflow-tooltip v-if="columns[3].show">
           <template #default="{ row }">
             {{ getResourceName(row.resourceId) }}
           </template>
         </el-table-column>
-        <el-table-column label="农资类型" width="100" align="center" v-if="columns[4].show">
+        <el-table-column label="农资类型" align="center" v-if="columns[4].show">
           <template #default="{ row }">
             {{ getResourceTypeLabel(row.resourceId) }}
           </template>
         </el-table-column>
-        <el-table-column label="计量单位" width="100" align="center" v-if="columns[5].show">
+        <el-table-column label="计量单位" align="center" v-if="columns[5].show">
           <template #default="{ row }">
             {{ getResourceMeasureUnit(row.resourceId) }}
           </template>
         </el-table-column>
-        <el-table-column label="当前库存" prop="currentStock" width="120" align="center" v-if="columns[6].show" />
-        <el-table-column label="最小库存" prop="minStock" width="120" align="center" v-if="columns[7].show" />
-        <el-table-column label="最大库存" prop="maxStock" width="120" align="center" v-if="columns[8].show" />
-        <el-table-column label="备注" prop="remark" min-width="150" show-overflow-tooltip v-if="columns[9].show" />
-        <el-table-column label="创建时间" prop="createTime" width="180" align="center" v-if="columns[10].show" />
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="当前库存" prop="currentStock" align="center" v-if="columns[6].show" />
+        <el-table-column label="最小库存" prop="minStock" align="center" v-if="columns[7].show" />
+        <el-table-column label="最大库存" prop="maxStock" align="center" v-if="columns[8].show" />
+        <el-table-column label="备注" prop="remark" show-overflow-tooltip v-if="columns[9].show" />
+        <el-table-column label="创建时间" prop="createTime" align="center" v-if="columns[10].show" />
+        <el-table-column label="操作" align="center" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="handleUpdate(scope.row)" v-auth="['agriculture:resourceinventory:edit']">
               <el-icon><EditPen /></el-icon>修改
@@ -274,8 +274,8 @@ const stockInRef = ref<FormInstance>()
 const userStore = useUserStore()
 
 const columns = reactive([
-  { name: '库存ID', show: true },
-  { name: '农资ID', show: true },
+  { name: '库存ID', show: false },
+  { name: '农资ID', show: false },
   { name: '农资编码', show: true },
   { name: '农资名称', show: true },
   { name: '农资类型', show: true },

@@ -54,6 +54,7 @@
           >
               <template #header>
                   <el-tag
+                      v-if="!props.readonly"
                       @click="handleAdd"
                       v-hasPermi="['agriculture:resourceusage:add']"
                       class="cursor-pointer"
@@ -62,12 +63,12 @@
               </template>
               <template #default="{ row }">
                   <el-button
+                      v-if="!props.readonly && canReturn(row)"
                       size="small"
                       type="success"
                       link
                       icon="Check"
                       @click="handleReturn(row)"
-                      v-if="canReturn(row)"
                       v-hasPermi="['agriculture:resourceusage:edit']"
                   >归还
                   </el-button>
@@ -223,6 +224,10 @@ const props = defineProps({
   taskEmployeeList: {
     type: Array as () => UserResult[],
     default: () => []
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 })
 const emit = defineEmits(['log'])

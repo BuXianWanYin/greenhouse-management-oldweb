@@ -14,7 +14,7 @@
                             <div class="name">{{ selectedLabel }}</div>
                             <div class="desc">责任人</div>
                         </div>
-                        <span class="close" @click.stop="clearSelect">×</span>
+                        <span v-if="!disabled" class="close" @click.stop="clearSelect">×</span>
                     </div>
                 </template>
                 <template v-else>
